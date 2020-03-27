@@ -124,8 +124,8 @@
               parsed.newCases = parsed.cases - prevRow.cases;
               parsed.newDeaths = parsed.deaths - prevRow.deaths;
             } else {
-              parsed.newCases = 0;
-              parsed.newDeaths = 0;
+              parsed.newCases = parsed.cases;
+              parsed.newDeaths = parsed.deaths;
             }
             newValues.push(parsed);
 
