@@ -28,11 +28,12 @@
         <div>
           <h1>United States COVID-19 Spread</h1>
           <h3>
-            Data from The New York Times – updates automatically with their
+            Data from The New York Times. Updates automatically with their
             <a href="https://github.com/nytimes/covid-19-data">data on Github</a>. See their tracker
             <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">here</a
             >.
           </h3>
+          <h4>Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a></h4>
         </div>
       </div>
       <div class="flex-row flex-center">
@@ -331,7 +332,7 @@
             .attr('width', barWidth)
             .attr('x', d => xScale(d.i))
             .attr('y', d => Math.floor(cellYScale(d[field])))
-            .attr('height', d => Math.ceil(chartHeight - cellYScale(d[field])));
+            .attr('height', d => Math.max(Math.ceil(chartHeight - cellYScale(d[field])), 0));
 
           const $crosshair = $cell
             .append('line')
@@ -357,7 +358,7 @@
                   : bisectIndex - 1;
               const date = datesToShow[index];
               const value = shownValues.find(v => v.date.getTime() === date.getTime());
-              if (value && value !== tooltipValue) {
+              if (value && (value !== tooltipValue || !tooltipShown)) {
                 const chPos = Math.round(xScale(index) + barWidth / 2);
                 $crosshair
                   .attr('x1', chPos)
@@ -369,6 +370,7 @@
             .on('mouseout', function() {
               $crosshair.classed('crosshair-hidden', true);
               $('#tooltip').removeClass('shown');
+              tooltipShown = false;
             });
         });
 
@@ -396,8 +398,9 @@
 
       function showTooltip(value, mouse, evt) {
         tooltipValue = value;
+        tooltipShown = true;
         const {offsetX, offsetY} = evt;
-        const pad = 5;
+        const pad = 10;
         const css = {left: '', right: '', top: `${offsetY}px`, bottom: ''};
         const winWidth = window.innerWidth;
         // If it overflows right

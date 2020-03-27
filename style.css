@@ -43,13 +43,17 @@ div {
 header {
   margin: 15px 20px 20px;
 }
-h1 {
+header h1 {
   font-size: 24px;
   margin: 0;
 }
-h3 {
-  margin: 5px 0;
+header h3 {
+  margin: 5px 0 3px;
   color: #666;
+}
+header h4 {
+  margin: 0 0 5px;
+  color: #999;
 }
 a {
   color: currentColor;
