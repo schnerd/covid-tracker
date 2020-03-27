@@ -1,0 +1,200 @@
+:root {
+  /* Dark theme */
+
+  --bg: #fff;
+  --text: #000;
+  --tickLine: #eee;
+  --baseLine: #aaa;
+  --tickText: #999;
+  --bar: #9b59b6;
+  --font: 'Montserrat', sans-serif;
+  /*         --bg: #2c3e50;
+    --text: #fff;
+    --tickLine: rgba(255, 255, 255, 0.3);
+    --tickText: rgba(255, 255, 255, 0.3); */
+}
+body {
+  font: 12px sans-serif;
+  margin: 0;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+}
+svg {
+  overflow: visible;
+}
+* {
+  box-sizing: border-box;
+}
+div {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.flex-row {
+  display: flex;
+  flex-direction: row;
+}
+.flex-center {
+  align-items: center;
+}
+
+header {
+  margin: 15px 20px 20px;
+}
+h1 {
+  font-size: 24px;
+  margin: 0;
+}
+h3 {
+  margin: 5px 0;
+  color: #666;
+}
+a {
+  color: currentColor;
+  text-decoration: underline;
+}
+a:visited {
+  color: currentColor;
+  text-decoration: underline;
+}
+
+.filter-item {
+  padding: 10px 20px 0 0;
+}
+.cb-container {
+  display: block;
+  position: relative;
+  padding-left: 24px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 20px;
+  cursor: pointer;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Hide the browser's default checkbox */
+.cb-input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* Create a custom checkbox */
+.cb-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 18px;
+  width: 18px;
+  background-color: #eee;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+.cb-input:not(:checked) ~ .cb-label {
+  color: #666;
+}
+.cb-container:hover .cb-input:not(:checked) ~ .cb-label {
+  color: #444;
+}
+
+/* On mouse-over, add a grey background color */
+.cb-container:hover .cb-input:not(:checked) ~ .cb-mark {
+  background-color: #ccc;
+}
+
+/* When the checkbox is checked, add a blue background */
+.cb-input:checked ~ .cb-mark {
+  background-color: #2196f3;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.cb-mark:after {
+  content: '';
+  position: absolute;
+  display: none;
+}
+
+/* Show the checkmark when checked */
+.cb-input:checked ~ .cb-mark:after {
+  display: block;
+}
+
+/* Style the checkmark/indicator */
+.cb-mark:after {
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg) scale(0.8);
+}
+
+.select-css {
+  display: block;
+  font-size: 16px;
+  color: #666;
+  line-height: 1.6;
+  padding: 2px 1.3em 2px 8px;
+  margin: 0;
+  border: none;
+  box-shadow: 0 1px 0 1px rgba(0, 0, 0, 0);
+  border-radius: 4px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: all 0.2s;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='silver'><polygon points='0,0 10,0 5,5'/></svg>")
+    no-repeat scroll 93% 64% #eee;
+  font-family: var(--font);
+}
+.select-css::-ms-expand {
+  display: none;
+}
+.select-css:hover {
+  background-color: #ddd;
+}
+.select-css:focus {
+  box-shadow: 0 0 1px 3px rgba(59, 153, 252, 0.7);
+  box-shadow: 0 0 0 3px -moz-mac-focusring;
+  outline: none;
+}
+.select-css option {
+  font-weight: normal;
+}
+
+.cell-label {
+  text-shadow: 0px 0px 10px var(--bg);
+  fill: var(--text);
+  opacity: 0.5;
+  font-weight: bold;
+}
+.x-tick {
+  dominant-baseline: hanging;
+  font-size: 10px;
+  fill: var(--tickText);
+}
+.tick line,
+.domain {
+  stroke: var(--tickLine);
+}
+.tick text {
+  fill: var(--tickText);
+}
+.consistent-y .cell:not(:first-child) .tick text,
+.consistent-y .cell:not(:first-child) .domain {
+  display: none;
+}
+.baseline {
+  stroke: var(--baseLine);
+}
+
+.bar {
+  fill: var(--bar);
+}

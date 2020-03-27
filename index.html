@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>United States COVID-19 Spread Dashboard</title>
+    <meta
+      name="description"
+      content="Dashboard of COVID-19 spread in USA using Data from The New York Times"
+    />
+    <meta name="author" content="David Schnurr" />
+    <meta name="Robots" content="INDEX,FOLLOW" />
+
+    <script src="https://unpkg.com/d3@5.15.0/dist/d3.min.js"></script>
+    <script src="https://unpkg.com/jquery@3.4.1/dist/jquery.js"></script>
+    <script src="https://unpkg.com/moment@2.24.0/moment.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap"
+      rel="stylesheet"
+    />
+    <link href="style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <header>
+      <div class="flex-row flex-center">
+        <div>
+          <h1>United States COVID-19 Spread</h1>
+          <h3>
+            Data from The New York Times – updates automatically with their
+            <a href="https://github.com/nytimes/covid-19-data">data on Github</a>. See their tracker
+            <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">here</a
+            >.
+          </h3>
+        </div>
+      </div>
+      <div class="flex-row flex-center">
+        <div class="filter-item">
+          <select id="field-select" class="select-css">
+            <option value="cases">Confirmed Cases</option>
+            <option value="deaths">Confirmed Deaths</option>
+            <option value="newCases" selected>Daily New Cases</option>
+            <option value="newDeaths">Daily New Deaths</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <select id="time-select" class="select-css">
+            <option value="last7Days" selected>Last 7 days</option>
+            <option value="last14Days" selected>Last 14 days</option>
+            <option value="lastMonth">Last Month</option>
+            <option value="all">All</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label class="cb-container">
+            <input type="checkbox" class="cb-input" id="cb-use-log-scale" />
+            <span class="cb-mark"></span>
+            <span class="cb-label">Log Scale</span>
+          </label>
+        </div>
+        <div class="filter-item">
+          <label class="cb-container">
+            <input type="checkbox" class="cb-input" id="cb-consistent-y" checked />
+            <span class="cb-mark"></span>
+            <span class="cb-label">Consistent Y-Axis</span>
+          </label>
+        </div>
+      </div>
+    </header>
+
+    <div id="viz">
+      <svg id="svg"></svg>
+    </div>
+
+    <script>
+      let useLog = false;
+      let data = null;
+      let field = 'newCases';
+      let timeFilter = 'last14Days';
+      let consistentY = true;
+
+      function processStates(csv) {
+        const states = d3
+          .nest()
+          .key(k => k.state)
+          .entries(csv);
+
+        const extents = {
+          date: [null, null],
+          cases: [null, null],
+          deaths: [null, null],
+          newCases: [null, null],
+          newDeaths: [null, null],
+        };
+        const keys = ['date', 'cases', 'deaths', 'newCases', 'newDeaths'];
+        states.forEach(state => {
+          const newValues = [];
+          for (let i = 0; i < state.values.length; i++) {
+            const prevRow = state.values[i - 1];
+            const row = state.values[i];
+            const [year, month, date] = row.date.split('-');
+            const parsed = {
+              ...row,
+              date: new Date(Number(year), Number(month) - 1, Number(date)),
+              cases: Number(row.cases),
+              deaths: Number(row.deaths),
+            };
+            if (prevRow) {
+              parsed.newCases = parsed.cases - prevRow.cases;
+              parsed.newDeaths = parsed.deaths - prevRow.deaths;
+            } else {
+              parsed.newCases = 0;
+              parsed.newDeaths = 0;
+            }
+            newValues.push(parsed);
+
+            keys.forEach(key => {
+              if (extents[key][0] === null || parsed[key] < extents[key][0]) {
+                extents[key][0] = parsed[key];
+              }
+              if (extents[key][1] === null || parsed[key] > extents[key][1]) {
+                extents[key][1] = parsed[key];
+              }
+            });
+          }
+          state.values = newValues;
+        });
+
+        return {
+          byState: states,
+          stateExtents: extents,
+        };
+      }
+
+      function last(arr) {
+        return arr[arr.length - 1];
+      }
+
+      function render() {
+        const {byState} = data;
+        const extents = data.stateExtents;
+
+        const groups = byState.slice(0);
+        groups.sort((a, b) => {
+          return last(b.values)[field] - last(a.values)[field];
+        });
+
+        const yScaleType = useLog ? 'scaleLog' : 'scaleLinear';
+
+        const firstDate = extents.date[0];
+        const lastDate = extents.date[1];
+
+        let daysToShow;
+        if (timeFilter === 'last7Days') {
+          daysToShow = 7;
+        } else if (timeFilter === 'last14Days') {
+          daysToShow = 14;
+        } else if (timeFilter === 'lastMonth') {
+          daysToShow = 30;
+        } else {
+          daysToShow = moment(lastDate).diff(moment(firstDate), 'days');
+        }
+        const datesToShow = [lastDate];
+        for (let i = 1; i < daysToShow; i++) {
+          const nextDate = new Date(lastDate);
+          nextDate.setDate(lastDate.getDate() - i);
+          datesToShow.unshift(nextDate);
+        }
+
+        const numStates = groups.length;
+        const chartWidth = 150;
+        const chartPadding = 25;
+        const chartHeight = 70;
+        const yAxisWidth = 40;
+        const xAxisHeight = 14;
+        const winWidth = window.innerWidth;
+        const barPad = daysToShow > 10 ? 1 : 2;
+
+        const colWidth = chartWidth + chartPadding;
+        const rowHeight = chartHeight + xAxisHeight + chartPadding;
+
+        const numCols = Math.floor((winWidth - yAxisWidth) / colWidth);
+        const numRows = Math.ceil(numStates / numCols);
+
+        const totalHeight = numRows * rowHeight;
+
+        const xScale = d3
+          .scaleBand()
+          .domain(d3.range(daysToShow))
+          .rangeRound([0, chartWidth])
+          .paddingInner((barPad * daysToShow) / chartWidth)
+          .paddingOuter((barPad * 5) / chartWidth);
+        const barWidth = xScale.bandwidth();
+
+        function makeYScale(extent) {
+          const domain = [Math.max(extent[0], 0), extent[1]];
+          if (useLog && domain[0] === 0) {
+            domain[0] = 1;
+          }
+          return d3[yScaleType]()
+            .domain(domain)
+            .range([chartHeight, 0]);
+        }
+
+        function makeAxis(scale) {
+          const domainMax = scale.domain()[1];
+          return d3
+            .axisLeft(scale)
+            .ticks(
+              !useLog ? 4 : domainMax < 100 ? 1 : domainMax < 1000 ? 2 : domainMax < 10000 ? 3 : 4,
+            )
+            .tickSizeInner(-chartWidth)
+            .tickSizeOuter(0)
+            .tickFormat(d => {
+              return formatYTick(d);
+            });
+        }
+        const yScale = makeYScale(extents[field]);
+        const yAxis = makeAxis(yScale);
+
+        const $viz = d3.select('#viz');
+        const $svg = d3.select('#svg');
+
+        $svg.attr('class', consistentY ? 'consistent-y' : '');
+
+        // Make sure we're starting fresh
+        $svg.selectAll('*').remove();
+
+        // Create grid of rows and columns
+        const $rows = $svg
+          .attr('viewBox', [0, 0, winWidth, totalHeight])
+          .selectAll('g.row')
+          .data(d3.range(numRows))
+          .enter()
+          .append('g')
+          .attr('class', 'row')
+          .attr('transform', row => `translate(${yAxisWidth}, ${row * rowHeight})`);
+
+        // Add cells
+        $rows.each(function(row) {
+          const lastItemNumber = (row + 1) * numCols;
+          const numColsForRow = lastItemNumber > groups.length ? groups.length % numCols : numCols;
+          const range = d3.range(numColsForRow).map(i => ({row, col: i}));
+          d3.select(this)
+            .selectAll('g.cell')
+            .data(range)
+            .enter()
+            .append('g')
+            .attr('class', 'cell')
+            .attr('transform', d => `translate(${d.col * colWidth}, 0)`);
+        });
+
+        const $cells = $svg.selectAll('g.cell');
+
+        // Fill each cell with a chart
+        $cells.each(function(d, index) {
+          const $cell = d3.select(this);
+          const data = groups[index];
+          if (!data) {
+            return;
+          }
+          const values = data.values;
+          const totalCases = last(values).cases;
+
+          // Add baseline
+          $cell
+            .append('line')
+            .attr('class', 'baseline')
+            .attr('y1', chartHeight)
+            .attr('y2', chartHeight)
+            .attr('x2', chartWidth);
+
+          // Add axis
+          let cellYScale = yScale;
+          let cellYAxis = yAxis;
+          if (!consistentY) {
+            const extent = d3.extent(values, d => d[field]);
+            cellYScale = makeYScale(extent);
+            cellYAxis = makeAxis(cellYScale);
+          }
+
+          $cell
+            .append('g')
+            .attr('transform', 'translate(0,0)')
+            .call(cellYAxis);
+
+          // Add label
+          $cell
+            .append('text')
+            .text(data.key)
+            .attr('x', 6)
+            .attr('y', 14)
+            .attr('class', 'cell-label');
+
+          // Make sure we show all dates in proper locations (even if group has data missing at that date)
+          const shownValues = [];
+          let valuesIndex = 0;
+          for (var i = 0; i < datesToShow.length; i++) {
+            while (
+              values[valuesIndex] &&
+              values[valuesIndex].date.getTime() < datesToShow[i].getTime()
+            ) {
+              valuesIndex++;
+            }
+            if (values[valuesIndex].date.getTime() === datesToShow[i].getTime()) {
+              shownValues.push({...values[valuesIndex], i});
+            }
+          }
+
+          $cell
+            .selectAll('.bar')
+            .data(shownValues)
+            .enter()
+            .append('rect')
+            .attr('class', 'bar')
+            .attr('width', barWidth)
+            .attr('x', d => xScale(d.i))
+            .attr('y', d => Math.floor(cellYScale(d[field])))
+            .attr('height', d => Math.ceil(chartHeight - cellYScale(d[field])));
+        });
+
+        // Add start dates
+        const endDate = last(groups[0].values).date;
+        const startDate = new Date(endDate);
+        startDate.setDate(startDate.getDate() - daysToShow + 1);
+
+        $cells
+          .append('text')
+          .attr('class', 'x-tick x-tick-start')
+          .attr('text-anchor', 'start')
+          .attr('x', 0)
+          .attr('y', chartHeight + 4)
+          .text(formatDate(startDate));
+
+        $cells
+          .append('text')
+          .attr('class', 'x-tick x-tick-end')
+          .attr('text-anchor', 'end')
+          .attr('x', chartWidth)
+          .attr('y', chartHeight + 4)
+          .text(formatDate(endDate));
+      }
+
+      function formatDate(d) {
+        return d.toLocaleString('default', {month: 'short', day: 'numeric'});
+      }
+
+      function formatYTick(n) {
+        if (n >= 1e6) {
+          return `${Math.round(n / 1e6)}m`;
+        }
+        if (n >= 1e3) {
+          return `${Math.round(n / 1e3)}k`;
+        }
+        return n;
+      }
+
+      function attachEvents() {
+        $('#field-select').change(function() {
+          field = $(this).val();
+          render();
+        });
+        $('#time-select').change(function() {
+          timeFilter = $(this).val();
+          render();
+        });
+        $('#cb-use-log-scale').change(function() {
+          useLog = $(this).is(':checked');
+          render();
+        });
+        $('#cb-consistent-y').change(function() {
+          consistentY = $(this).is(':checked');
+          render();
+        });
+      }
+
+      const resizeWindow = _.throttle(() => {
+        render();
+      }, 100);
+      window.addEventListener('resize', resizeWindow);
+
+      d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv').then(
+        csv => {
+          // d3.csv('us-states.csv').then(csv => {
+          data = processStates(csv);
+          render();
+        },
+      );
+
+      attachEvents();
+    </script>
+  </body>
+</html>

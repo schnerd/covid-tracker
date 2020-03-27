@@ -1,0 +1,10 @@
+{
+  "name": "us-covid-data",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "David Schnurr <schnurr@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "prettier": "^2.0.2"
+  }
+}
