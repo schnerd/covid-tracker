@@ -71,6 +71,7 @@
 
     <div id="viz">
       <svg id="svg"></svg>
+      <div id="tooltip"></div>
     </div>
 
     <script>
@@ -79,6 +80,15 @@
       let field = 'newCases';
       let timeFilter = 'last14Days';
       let consistentY = true;
+      let tooltipValue = null;
+      let tooltipShown = null;
+
+      const dataPointLabels = {
+        cases: 'Total Cases',
+        deaths: 'Total Deaths',
+        newCases: 'New Cases',
+        newDeaths: 'New Deaths',
+      };
 
       function processStates(csv) {
         const states = d3
@@ -192,6 +202,10 @@
           .paddingInner((barPad * daysToShow) / chartWidth)
           .paddingOuter((barPad * 5) / chartWidth);
         const barWidth = xScale.bandwidth();
+
+        const barXMidpoints = datesToShow.map((d, i) => {
+          return xScale(i) + barWidth / 2;
+        });
 
         function makeYScale(extent) {
           const domain = [Math.max(extent[0], 0), extent[1]];
@@ -318,6 +332,44 @@
             .attr('x', d => xScale(d.i))
             .attr('y', d => Math.floor(cellYScale(d[field])))
             .attr('height', d => Math.ceil(chartHeight - cellYScale(d[field])));
+
+          const $crosshair = $cell
+            .append('line')
+            .attr('y1', 0)
+            .attr('y2', chartHeight)
+            .attr('class', 'crosshair crosshair-hidden');
+
+          const $hover = $cell
+            .append('rect')
+            .attr('class', 'pointer')
+            .attr('width', chartWidth)
+            .attr('height', chartHeight)
+            .on('mousemove', function(datum) {
+              const evt = d3.event;
+              const mouse = d3.mouse(this);
+              const xPos = mouse[0];
+              const bisectIndex = d3.bisectLeft(barXMidpoints, xPos);
+              const left = barXMidpoints[bisectIndex - 1];
+              const right = barXMidpoints[bisectIndex];
+              const index =
+                left == undefined || Math.abs(xPos - right) < Math.abs(xPos - left)
+                  ? bisectIndex
+                  : bisectIndex - 1;
+              const date = datesToShow[index];
+              const value = shownValues.find(v => v.date.getTime() === date.getTime());
+              if (value && value !== tooltipValue) {
+                const chPos = Math.round(xScale(index) + barWidth / 2);
+                $crosshair
+                  .attr('x1', chPos)
+                  .attr('x2', chPos)
+                  .classed('crosshair-hidden', false);
+                showTooltip(value, mouse, evt);
+              }
+            })
+            .on('mouseout', function() {
+              $crosshair.classed('crosshair-hidden', true);
+              $('#tooltip').removeClass('shown');
+            });
         });
 
         // Add start dates
@@ -331,7 +383,7 @@
           .attr('text-anchor', 'start')
           .attr('x', 0)
           .attr('y', chartHeight + 4)
-          .text(formatDate(startDate));
+          .text(formatXDate(startDate));
 
         $cells
           .append('text')
@@ -339,11 +391,47 @@
           .attr('text-anchor', 'end')
           .attr('x', chartWidth)
           .attr('y', chartHeight + 4)
-          .text(formatDate(endDate));
+          .text(formatXDate(endDate));
       }
 
-      function formatDate(d) {
+      function showTooltip(value, mouse, evt) {
+        tooltipValue = value;
+        const {offsetX, offsetY} = evt;
+        const pad = 5;
+        const css = {left: '', right: '', top: `${offsetY}px`, bottom: ''};
+        const winWidth = window.innerWidth;
+        // If it overflows right
+        if (offsetX + 150 > winWidth) {
+          css.right = `${winWidth - offsetX - pad}px`;
+        } else {
+          css.left = `${offsetX + pad}px`;
+        }
+
+        // Make sure current field is first
+        const dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].filter(k => k !== field);
+        dataPoints.unshift(field);
+
+        const dataPointEl = dataPoints.map((k, i) => {
+          return `
+					<div class="tooltip-dp flex-row flex-center ${i === 0 ? 'tooltip-dp-active' : ''}">
+						<div class="tooltip-dp-label">${dataPointLabels[k]}</div>
+						<div class="tooltip-dp-val">${formatTooltipValue(value[k])}</div>
+					</div>
+						`;
+        });
+
+        $('#tooltip')
+          .addClass('shown')
+          .css(css)
+          .html(`<div><h4>${formatTooltipDate(value.date)}</h4>${dataPointEl.join('')}</div>`);
+      }
+
+      function formatXDate(d) {
         return d.toLocaleString('default', {month: 'short', day: 'numeric'});
+      }
+
+      function formatTooltipDate(d) {
+        return d.toLocaleString('default', {year: 'numeric', month: 'long', day: 'numeric'});
       }
 
       function formatYTick(n) {
@@ -354,6 +442,11 @@
           return `${Math.round(n / 1e3)}k`;
         }
         return n;
+      }
+
+      const tooltipFmt = d3.format(',d');
+      function formatTooltipValue(n) {
+        return tooltipFmt(n);
       }
 
       function attachEvents() {
