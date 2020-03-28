@@ -593,6 +593,7 @@
         csv => {
           stateData = processStates(csv);
           const stateOptions = stateData.states
+            .sort((a, b) => a.key.localeCompare(b.key))
             .map(s => `<option value="${s.key}">${s.key}</option>`)
             .join('');
           $('#state-select').html(
