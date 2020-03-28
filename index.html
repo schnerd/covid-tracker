@@ -23,59 +23,69 @@
     <link href="style.css" rel="stylesheet" />
   </head>
   <body>
-    <header>
-      <div class="flex-row flex-center">
-        <div>
-          <h1>United States COVID-19 Spread</h1>
-          <h3>
-            Data from The New York Times. Updates automatically with their
-            <a href="https://github.com/nytimes/covid-19-data">data on Github</a>. See their tracker
-            <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html">here</a
-            >.
-          </h3>
-          <h4>
-            Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source
-            available <a href="https://github.com/schnerd/us-covid-dashboard">on Github</a>.
-          </h4>
+    <div>
+      <header>
+        <div class="flex-row flex-center">
+          <div>
+            <h1>United States COVID-19 Spread</h1>
+            <h3>
+              Data from The New York Times. Updates automatically with their
+              <a href="https://github.com/nytimes/covid-19-data">data on Github</a>. See their
+              tracker
+              <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html"
+                >here</a
+              >.
+            </h3>
+            <h4>
+              Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source
+              available <a href="https://github.com/schnerd/us-covid-dashboard">on Github</a>.
+            </h4>
+          </div>
         </div>
-      </div>
-      <div class="flex-row flex-center flex-wrap">
-        <div class="filter-item">
-          <select id="field-select" class="select-css">
-            <option value="newCases" selected>Daily New Cases</option>
-            <option value="newDeaths">Daily New Deaths</option>
-            <option value="cases">Confirmed Cases</option>
-            <option value="deaths">Confirmed Deaths</option>
-          </select>
+        <div class="flex-row flex-center flex-wrap">
+          <div class="filter-item">
+            <select id="state-select" class="select-css">
+              <option value="allStates" selected>All States</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <select id="field-select" class="select-css">
+              <option value="newCases" selected>Daily New Cases</option>
+              <option value="newDeaths">Daily New Deaths</option>
+              <option value="cases">Confirmed Cases</option>
+              <option value="deaths">Confirmed Deaths</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <select id="time-select" class="select-css">
+              <option value="last7Days" selected>Last 7 days</option>
+              <option value="last14Days" selected>Last 14 days</option>
+              <option value="lastMonth">Last Month</option>
+              <option value="all">All</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label class="cb-container">
+              <input type="checkbox" class="cb-input" id="cb-use-log-scale" />
+              <span class="cb-mark"></span>
+              <span class="cb-label">Log Scale</span>
+            </label>
+          </div>
+          <div class="filter-item">
+            <label class="cb-container">
+              <input type="checkbox" class="cb-input" id="cb-consistent-y" checked />
+              <span class="cb-mark"></span>
+              <span class="cb-label">Consistent Y-Axis</span>
+            </label>
+          </div>
         </div>
-        <div class="filter-item">
-          <select id="time-select" class="select-css">
-            <option value="last7Days" selected>Last 7 days</option>
-            <option value="last14Days" selected>Last 14 days</option>
-            <option value="lastMonth">Last Month</option>
-            <option value="all">All</option>
-          </select>
-        </div>
-        <div class="filter-item">
-          <label class="cb-container">
-            <input type="checkbox" class="cb-input" id="cb-use-log-scale" />
-            <span class="cb-mark"></span>
-            <span class="cb-label">Log Scale</span>
-          </label>
-        </div>
-        <div class="filter-item">
-          <label class="cb-container">
-            <input type="checkbox" class="cb-input" id="cb-consistent-y" checked />
-            <span class="cb-mark"></span>
-            <span class="cb-label">Consistent Y-Axis</span>
-          </label>
-        </div>
-      </div>
-    </header>
+      </header>
+      <div role="button" class="back-to-states">← Back to states</div>
 
-    <div id="viz">
-      <svg id="svg"></svg>
-      <div id="tooltip"></div>
+      <div id="viz">
+        <svg id="svg"></svg>
+        <div id="tooltip"></div>
+      </div>
     </div>
 
     <script>
@@ -116,6 +126,8 @@
           .key(k => k.state)
           .entries(csv);
 
+        const stateMap = {};
+
         nestedStates.forEach(state => {
           const counties = d3
             .nest()
@@ -124,11 +136,10 @@
           const [byCounty, extents] = processGroups(counties);
           state.counties = byCounty;
           state.extents = extents;
+          stateMap[state.key] = {key: state.key, counties, extents};
         });
 
-        return {
-          states,
-        };
+        return stateMap;
       }
 
       function processGroups(groups) {
@@ -183,7 +194,7 @@
       }
 
       function render(data) {
-        const {extents} = data;
+        const {extents, isCounties} = data;
 
         const groups = data.groups.slice(0);
         groups.sort((a, b) => {
@@ -382,6 +393,13 @@
             .attr('y2', chartHeight)
             .attr('class', 'crosshair crosshair-hidden');
 
+          function onClick() {
+            if (!isCounties) {
+              renderCounties(data.key);
+              $('#state-select').val(data.key);
+            }
+          }
+
           const $hover = $cell
             .append('rect')
             .attr('class', 'pointer')
@@ -413,7 +431,8 @@
               $crosshair.classed('crosshair-hidden', true);
               $('#tooltip').removeClass('shown');
               tooltipShown = false;
-            });
+            })
+            .on('click', onClick);
 
           // Add label above other elements to make it clickable
           $cell
@@ -421,7 +440,8 @@
             .text(data.key)
             .attr('x', 6)
             .attr('y', 14)
-            .attr('class', 'cell-label');
+            .attr('class', 'cell-label')
+            .on('click', onClick);
         });
 
         // Add start dates
@@ -470,10 +490,18 @@
 						`;
         });
 
+        const drilldownMsg = !value.county
+          ? '<div class="tooltip-drill">Click to see counties</div>'
+          : '';
+
         $('#tooltip')
           .addClass('shown')
           .css(css)
-          .html(`<div><h4>${formatTooltipDate(value.date)}</h4>${dataPointEl.join('')}</div>`);
+          .html(
+            `<div><h4>${formatTooltipDate(value.date)}</h4>${dataPointEl.join(
+              '',
+            )}${drilldownMsg}</div>`,
+          );
       }
 
       function formatXDate(d) {
@@ -500,6 +528,18 @@
       }
 
       function attachEvents() {
+        $('#state-select').change(function() {
+          const val = $(this).val();
+          if (val === 'allStates') {
+            renderAllStates();
+          } else {
+            renderCounties(val);
+          }
+        });
+        $('.back-to-states').click(function() {
+          $('#state-select').val('allStates');
+          renderAllStates();
+        });
         $('#field-select').change(function() {
           field = $(this).val();
           if (curData) {
@@ -526,6 +566,20 @@
         });
       }
 
+      function renderAllStates() {
+        curData = {groups: stateData.states, extents: stateData.extents};
+        render(curData);
+        $('.back-to-states').removeClass('shown');
+        $('#tooltip').removeClass('shown');
+      }
+      function renderCounties(state) {
+        const stateData = countyData[state];
+        curData = {groups: stateData.counties, extents: stateData.extents, isCounties: true};
+        render(curData);
+        $('.back-to-states').addClass('shown');
+        $('#tooltip').removeClass('shown');
+      }
+
       const resizeWindow = _.throttle(() => {
         if (curData) {
           render(curData);
@@ -536,8 +590,13 @@
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv').then(
         csv => {
           stateData = processStates(csv);
-          curData = {groups: stateData.states, extents: stateData.extents};
-          render(curData);
+          const stateOptions = stateData.states
+            .map(s => `<option value="${s.key}">${s.key}</option>`)
+            .join('');
+          $('#state-select').html(
+            `<option value="allStates" selected>All States</option>${stateOptions}`,
+          );
+          renderAllStates();
         },
       );
 
