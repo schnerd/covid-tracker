@@ -437,6 +437,7 @@
           if (isTouchDevice) {
             $hover.on('click', () => {
               // Dont let this bubble up to document click
+              d3.selectAll('.crosshair').classed('crosshair-hidden', true);
               d3.event.stopPropagation();
               onMouseMove.call(this);
             });
