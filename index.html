@@ -258,7 +258,7 @@
         });
 
         function makeYScale(extent) {
-          const domain = [Math.max(extent[0], 0), extent[1]];
+          const domain = [Math.max(extent[0], 0), Math.max(extent[1], 10)];
           if (useLog && domain[0] === 0) {
             domain[0] = 1;
           }
