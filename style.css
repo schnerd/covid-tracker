@@ -219,6 +219,18 @@ a:visited {
   fill: var(--bar);
 }
 
+@media (min-width: 1024px) {
+  .cell-label {
+    font-size: 16px;
+  }
+  .tick text {
+    font-size: 12px;
+  }
+  .x-tick {
+    font-size: 12px;
+  }
+}
+
 #tooltip {
   position: absolute;
   pointer-events: none;

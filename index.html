@@ -182,19 +182,23 @@
           datesToShow.unshift(nextDate);
         }
 
+        const useLarge = window.innerWidth > 1024;
+        const chartAspectRatio = 2.15;
+        const chartPadding = useLarge ? 30 : 25;
+        const estChartWidth = useLarge ? 250 : 150;
+        const numCols = Math.floor(window.innerWidth / (estChartWidth + chartPadding));
+        const chartWidth = Math.floor((window.innerWidth - chartPadding * (numCols + 1)) / numCols);
+
         const numStates = groups.length;
-        const chartWidth = 150;
-        const chartPadding = 25;
-        const chartHeight = 70;
-        const yAxisWidth = 40;
-        const xAxisHeight = 14;
+        const chartHeight = Math.floor(chartWidth / chartAspectRatio);
+        const yAxisWidth = useLarge ? 50 : 40;
+        const xAxisHeight = useLarge ? 20 : 14;
         const winWidth = window.innerWidth;
         const barPad = daysToShow > 10 ? 1 : 2;
 
         const colWidth = chartWidth + chartPadding;
         const rowHeight = chartHeight + xAxisHeight + chartPadding;
 
-        const numCols = Math.floor((winWidth - yAxisWidth) / colWidth);
         const numRows = Math.ceil(numStates / numCols);
 
         const totalHeight = numRows * rowHeight;
