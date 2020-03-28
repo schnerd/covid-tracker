@@ -237,6 +237,17 @@ a:visited {
   }
 }
 
+/* Tap/click phrases */
+.tap {
+  display: none;
+}
+body.touch .tap {
+  display: inline;
+}
+body.touch .click {
+  display: none;
+}
+
 #tooltip {
   position: absolute;
   pointer-events: none;
@@ -247,6 +258,10 @@ a:visited {
   padding: 8px;
   background: var(--bg);
 }
+/* Allow tapping tooltip on touch devices (for drilldown) */
+body.touch #tooltip {
+  pointer-events: all;
+}
 #tooltip h4 {
   font-size: 14px;
   margin: 0 0 4px 0;
@@ -255,6 +270,7 @@ a:visited {
   opacity: 1;
 }
 .tooltip-drill {
+  display: block;
   margin-top: 6px;
   opacity: 0.4;
 }

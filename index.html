@@ -89,6 +89,11 @@
     </div>
 
     <script>
+      const isTouchDevice = 'ontouchstart' in document.documentElement;
+      if (isTouchDevice) {
+        $(document.body).addClass('touch');
+      }
+
       let useLog = false;
       let stateData = null;
       let countyData = null;
@@ -431,8 +436,12 @@
               $crosshair.classed('crosshair-hidden', true);
               $('#tooltip').removeClass('shown');
               tooltipShown = false;
-            })
-            .on('click', onClick);
+            });
+
+          // On touch devices we want this to show tooltip, not drill into counties
+          if (!isTouchDevice) {
+            $hover.on('click', onClick);
+          }
 
           // Add label above other elements to make it clickable
           $cell
@@ -491,7 +500,7 @@
         });
 
         const drilldownMsg = !value.county
-          ? '<div class="tooltip-drill">Click to see counties</div>'
+          ? '<div class="tooltip-drill"><span class="click">Click</span><span class="tap">Tap</span><span> to see counties</span></div>'
           : '';
 
         $('#tooltip')
@@ -552,6 +561,11 @@
           timeFilter = $(this).val();
           if (curData) {
             render(curData);
+          }
+        });
+        $('#tooltip').click(function() {
+          if (tooltipValue && !tooltipValue.county) {
+            renderCounties(tooltipValue.state);
           }
         });
         $('#cb-use-log-scale').change(function() {
