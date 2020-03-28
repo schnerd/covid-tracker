@@ -425,13 +425,10 @@
           css.left = `${offsetX + pad}px`;
         }
 
-        // Make sure current field is first
-        const dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].filter(k => k !== field);
-        dataPoints.unshift(field);
-
+        const dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'];
         const dataPointEl = dataPoints.map((k, i) => {
           return `
-					<div class="tooltip-dp flex-row flex-center ${i === 0 ? 'tooltip-dp-active' : ''}">
+					<div class="tooltip-dp flex-row flex-center ${k === field ? 'tooltip-dp-active' : ''}">
 						<div class="tooltip-dp-label">${dataPointLabels[k]}</div>
 						<div class="tooltip-dp-val">${formatTooltipValue(value[k])}</div>
 					</div>
