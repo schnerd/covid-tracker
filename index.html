@@ -530,6 +530,7 @@
       function attachEvents() {
         $('#state-select').change(function() {
           const val = $(this).val();
+          window.scrollTo(0, 0);
           if (val === 'allStates') {
             renderAllStates();
           } else {
@@ -538,6 +539,7 @@
         });
         $('.back-to-states').click(function() {
           $('#state-select').val('allStates');
+          window.scrollTo(0, 0);
           renderAllStates();
         });
         $('#field-select').change(function() {

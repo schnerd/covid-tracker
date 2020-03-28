@@ -176,6 +176,10 @@ a:visited {
   font-weight: normal;
 }
 
+#state-select {
+  width: 150px;
+}
+
 #viz {
   position: relative;
 }
