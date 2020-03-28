@@ -30,7 +30,6 @@ svg {
 div {
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
 }
 .flex-row {
   display: flex;
@@ -38,6 +37,9 @@ div {
 }
 .flex-center {
   align-items: center;
+}
+.flex-wrap {
+  flex-wrap: wrap;
 }
 
 header {

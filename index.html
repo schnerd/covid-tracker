@@ -39,7 +39,7 @@
           </h4>
         </div>
       </div>
-      <div class="flex-row flex-center">
+      <div class="flex-row flex-center flex-wrap">
         <div class="filter-item">
           <select id="field-select" class="select-css">
             <option value="cases">Confirmed Cases</option>
@@ -187,11 +187,12 @@
         const chartPadding = useLarge ? 30 : 25;
         const estChartWidth = useLarge ? 250 : 150;
         const numCols = Math.floor(window.innerWidth / (estChartWidth + chartPadding));
+        console.log(numCols);
         const chartWidth = Math.floor((window.innerWidth - chartPadding * (numCols + 1)) / numCols);
 
         const numStates = groups.length;
         const chartHeight = Math.floor(chartWidth / chartAspectRatio);
-        const yAxisWidth = useLarge ? 50 : 40;
+        const yAxisWidth = useLarge ? 40 : 30;
         const xAxisHeight = useLarge ? 20 : 14;
         const winWidth = window.innerWidth;
         const barPad = daysToShow > 10 ? 1 : 2;
