@@ -80,7 +80,9 @@
 
     <script>
       let useLog = false;
-      let data = null;
+      let stateData = null;
+      let countyData = null;
+      let curData = null;
       let field = 'newCases';
       let timeFilter = 'last14Days';
       let consistentY = true;
@@ -95,11 +97,41 @@
       };
 
       function processStates(csv) {
-        const states = d3
+        const nestedStates = d3
           .nest()
           .key(k => k.state)
           .entries(csv);
 
+        const [states, extents] = processGroups(nestedStates);
+        return {
+          states,
+          extents,
+        };
+      }
+
+      function processCounties(csv) {
+        // First nest counties by state
+        const nestedStates = d3
+          .nest()
+          .key(k => k.state)
+          .entries(csv);
+
+        nestedStates.forEach(state => {
+          const counties = d3
+            .nest()
+            .key(k => k.county)
+            .entries(state.values);
+          const [byCounty, extents] = processGroups(counties);
+          state.counties = byCounty;
+          state.extents = extents;
+        });
+
+        return {
+          states,
+        };
+      }
+
+      function processGroups(groups) {
         const extents = {
           date: [null, null],
           cases: [null, null],
@@ -107,12 +139,14 @@
           newCases: [null, null],
           newDeaths: [null, null],
         };
+
         const keys = ['date', 'cases', 'deaths', 'newCases', 'newDeaths'];
-        states.forEach(state => {
+
+        groups.forEach(group => {
           const newValues = [];
-          for (let i = 0; i < state.values.length; i++) {
-            const prevRow = state.values[i - 1];
-            const row = state.values[i];
+          for (let i = 0; i < group.values.length; i++) {
+            const prevRow = group.values[i - 1];
+            const row = group.values[i];
             const [year, month, date] = row.date.split('-');
             const parsed = {
               ...row,
@@ -138,24 +172,20 @@
               }
             });
           }
-          state.values = newValues;
+          group.values = newValues;
         });
 
-        return {
-          byState: states,
-          stateExtents: extents,
-        };
+        return [groups, extents];
       }
 
       function last(arr) {
         return arr[arr.length - 1];
       }
 
-      function render() {
-        const {byState} = data;
-        const extents = data.stateExtents;
+      function render(data) {
+        const {extents} = data;
 
-        const groups = byState.slice(0);
+        const groups = data.groups.slice(0);
         groups.sort((a, b) => {
           return last(b.values)[field] - last(a.values)[field];
         });
@@ -308,14 +338,6 @@
             .attr('transform', 'translate(0,0)')
             .call(cellYAxis);
 
-          // Add label
-          $cell
-            .append('text')
-            .text(data.key)
-            .attr('x', 6)
-            .attr('y', 14)
-            .attr('class', 'cell-label');
-
           // Make sure we show all dates in proper locations (even if group has data missing at that date)
           const shownValues = [];
           let valuesIndex = 0;
@@ -392,6 +414,14 @@
               $('#tooltip').removeClass('shown');
               tooltipShown = false;
             });
+
+          // Add label above other elements to make it clickable
+          $cell
+            .append('text')
+            .text(data.key)
+            .attr('x', 6)
+            .attr('y', 14)
+            .attr('class', 'cell-label');
         });
 
         // Add start dates
@@ -472,34 +502,53 @@
       function attachEvents() {
         $('#field-select').change(function() {
           field = $(this).val();
-          render();
+          if (curData) {
+            render(curData);
+          }
         });
         $('#time-select').change(function() {
           timeFilter = $(this).val();
-          render();
+          if (curData) {
+            render(curData);
+          }
         });
         $('#cb-use-log-scale').change(function() {
           useLog = $(this).is(':checked');
-          render();
+          if (curData) {
+            render(curData);
+          }
         });
         $('#cb-consistent-y').change(function() {
           consistentY = $(this).is(':checked');
-          render();
+          if (curData) {
+            render(curData);
+          }
         });
       }
 
       const resizeWindow = _.throttle(() => {
-        render();
+        if (curData) {
+          render(curData);
+        }
       }, 100);
       window.addEventListener('resize', resizeWindow);
 
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv').then(
         csv => {
-          // d3.csv('us-states.csv').then(csv => {
-          data = processStates(csv);
-          render();
+          stateData = processStates(csv);
+          curData = {groups: stateData.states, extents: stateData.extents};
+          render(curData);
         },
       );
+
+      // Delay this slightly – not needed until drill-down
+      setTimeout(() => {
+        d3.csv(
+          'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
+        ).then(csv => {
+          countyData = processCounties(csv);
+        });
+      }, 200);
 
       attachEvents();
     </script>
