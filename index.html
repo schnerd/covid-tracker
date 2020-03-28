@@ -363,7 +363,10 @@
             ) {
               valuesIndex++;
             }
-            if (values[valuesIndex].date.getTime() === datesToShow[i].getTime()) {
+            if (
+              values[valuesIndex] &&
+              values[valuesIndex].date.getTime() === datesToShow[i].getTime()
+            ) {
               shownValues.push({...values[valuesIndex], i});
             }
           }
