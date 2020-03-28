@@ -259,7 +259,7 @@ body.touch .click {
   background: var(--bg);
 }
 /* Allow tapping tooltip on touch devices (for drilldown) */
-body.touch #tooltip {
+body.touch #tooltip.shown {
   pointer-events: all;
 }
 #tooltip h4 {

@@ -233,7 +233,6 @@
         const chartPadding = useLarge ? 30 : 25;
         const estChartWidth = useLarge ? 250 : 150;
         const numCols = Math.floor(window.innerWidth / (estChartWidth + chartPadding));
-        console.log(numCols);
         const chartWidth = Math.floor((window.innerWidth - chartPadding * (numCols + 1)) / numCols);
 
         const numStates = groups.length;
@@ -398,6 +397,29 @@
             .attr('y2', chartHeight)
             .attr('class', 'crosshair crosshair-hidden');
 
+          function onMouseMove() {
+            const evt = d3.event;
+            const mouse = d3.mouse(this);
+            const xPos = mouse[0];
+            const bisectIndex = d3.bisectLeft(barXMidpoints, xPos);
+            const left = barXMidpoints[bisectIndex - 1];
+            const right = barXMidpoints[bisectIndex];
+            const index =
+              left == undefined || Math.abs(xPos - right) < Math.abs(xPos - left)
+                ? bisectIndex
+                : bisectIndex - 1;
+            const date = datesToShow[index];
+            const value = shownValues.find(v => v.date.getTime() === date.getTime());
+            if (value && (value !== tooltipValue || !tooltipShown)) {
+              const chPos = Math.round(xScale(index) + barWidth / 2);
+              $crosshair
+                .attr('x1', chPos)
+                .attr('x2', chPos)
+                .classed('crosshair-hidden', false);
+              showTooltip(value, mouse, evt);
+            }
+          }
+
           function onClick() {
             if (!isCounties) {
               renderCounties(data.key);
@@ -409,38 +431,23 @@
             .append('rect')
             .attr('class', 'pointer')
             .attr('width', chartWidth)
-            .attr('height', chartHeight)
-            .on('mousemove', function(datum) {
-              const evt = d3.event;
-              const mouse = d3.mouse(this);
-              const xPos = mouse[0];
-              const bisectIndex = d3.bisectLeft(barXMidpoints, xPos);
-              const left = barXMidpoints[bisectIndex - 1];
-              const right = barXMidpoints[bisectIndex];
-              const index =
-                left == undefined || Math.abs(xPos - right) < Math.abs(xPos - left)
-                  ? bisectIndex
-                  : bisectIndex - 1;
-              const date = datesToShow[index];
-              const value = shownValues.find(v => v.date.getTime() === date.getTime());
-              if (value && (value !== tooltipValue || !tooltipShown)) {
-                const chPos = Math.round(xScale(index) + barWidth / 2);
-                $crosshair
-                  .attr('x1', chPos)
-                  .attr('x2', chPos)
-                  .classed('crosshair-hidden', false);
-                showTooltip(value, mouse, evt);
-              }
-            })
-            .on('mouseout', function() {
-              $crosshair.classed('crosshair-hidden', true);
-              $('#tooltip').removeClass('shown');
-              tooltipShown = false;
-            });
+            .attr('height', chartHeight);
 
-          // On touch devices we want this to show tooltip, not drill into counties
-          if (!isTouchDevice) {
-            $hover.on('click', onClick);
+          // Touch device events are slightly different
+          if (isTouchDevice) {
+            $hover.on('click', () => {
+              // Dont let this bubble up to document click
+              d3.event.stopPropagation();
+              onMouseMove.call(this);
+            });
+          } else {
+            $hover
+              .on('mousemove', onMouseMove)
+              .on('click', onClick)
+              .on('mouseout', function() {
+                $crosshair.classed('crosshair-hidden', true);
+                hideTooltip();
+              });
           }
 
           // Add label above other elements to make it clickable
@@ -480,11 +487,11 @@
         tooltipShown = true;
         const {offsetX, offsetY} = evt;
         const pad = 10;
-        const css = {left: '', right: '', top: `${offsetY}px`, bottom: ''};
+        const css = {left: '', right: '', top: `${offsetY + pad}px`, bottom: ''};
         const winWidth = window.innerWidth;
         // If it overflows right
         if (offsetX + 150 > winWidth) {
-          css.right = `${winWidth - offsetX - pad}px`;
+          css.right = `${winWidth - offsetX + pad}px`;
         } else {
           css.left = `${offsetX + pad}px`;
         }
@@ -511,6 +518,11 @@
               '',
             )}${drilldownMsg}</div>`,
           );
+      }
+
+      function hideTooltip() {
+        $('#tooltip').removeClass('shown');
+        tooltipShown = false;
       }
 
       function formatXDate(d) {
@@ -566,6 +578,7 @@
         $('#tooltip').click(function() {
           if (tooltipValue && !tooltipValue.county) {
             renderCounties(tooltipValue.state);
+            $('#state-select').val(tooltipValue.state);
           }
         });
         $('#cb-use-log-scale').change(function() {
@@ -580,20 +593,23 @@
             render(curData);
           }
         });
+        $(document).on('click', function(evt) {
+          hideTooltip();
+        });
       }
 
       function renderAllStates() {
         curData = {groups: stateData.states, extents: stateData.extents};
         render(curData);
         $('.back-to-states').removeClass('shown');
-        $('#tooltip').removeClass('shown');
+        hideTooltip();
       }
       function renderCounties(state) {
         const stateData = countyData[state];
         curData = {groups: stateData.counties, extents: stateData.extents, isCounties: true};
         render(curData);
         $('.back-to-states').addClass('shown');
-        $('#tooltip').removeClass('shown');
+        hideTooltip();
       }
 
       const resizeWindow = _.throttle(() => {
