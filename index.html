@@ -202,8 +202,9 @@
         const {extents, isCounties} = data;
 
         const groups = data.groups.slice(0);
+        // Just sort by total cumulative cases
         groups.sort((a, b) => {
-          return last(b.values)[field] - last(a.values)[field];
+          return last(b.values).cases - last(a.values).cases;
         });
 
         const yScaleType = useLog ? 'scaleLog' : 'scaleLinear';
