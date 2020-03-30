@@ -268,9 +268,15 @@
 
         const groups = data.groups.slice(0);
 
-        // Sort by the sum of the data currently being shown
         groups.forEach(g => {
-          g.sortVal = d3.sum(g.values, v => v[field]);
+          if (field.startsWith('new')) {
+            // For daily new cases / deaths, sort by the sum of the data currently being shown
+            g.sortVal = d3.sum(g.values, v => v[field]);
+          } else {
+            // Otherwise sort by the last shown cumulative value
+            const lastVal = _.findLast(g.values, v => v[field] != undefined);
+            g.sortVal = lastVal ? lastVal[field] : -1;
+          }
         });
         groups.sort((a, b) => b.sortVal - a.sortVal);
 
