@@ -683,7 +683,7 @@
         }
 
         let dataPoints;
-        if (field === 'tests') {
+        if (fieldFilter === 'tests') {
           dataPoints = [
             {key: 'positive', color: 'primary1'},
             {key: 'negative', color: 'primary2'},
@@ -692,7 +692,7 @@
             {key: 'cases'},
             {key: 'deaths'},
           ];
-        } else if (field === 'newTests') {
+        } else if (fieldFilter === 'newTests') {
           dataPoints = [
             {key: 'newPositive', color: 'primary1'},
             {key: 'newNegative', color: 'primary2'},
