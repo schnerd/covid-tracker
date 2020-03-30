@@ -66,6 +66,13 @@
           </div>
           <div class="filter-item">
             <label class="cb-container">
+              <input type="checkbox" class="cb-input" id="cb-per-100k" />
+              <span class="cb-mark"></span>
+              <span class="cb-label">Per 100k People</span>
+            </label>
+          </div>
+          <div class="filter-item">
+            <label class="cb-container">
               <input type="checkbox" class="cb-input" id="cb-use-log-scale" />
               <span class="cb-mark"></span>
               <span class="cb-label">Log Scale</span>
@@ -81,6 +88,7 @@
         </div>
       </header>
       <div role="button" class="back-to-states">← Back to states</div>
+      <h3 class="sub-geo-name"></h3>
 
       <div id="viz">
         <svg id="svg"></svg>
@@ -94,13 +102,19 @@
         $(document.body).addClass('touch');
       }
 
-      let useLog = false;
+      // Data
       let stateData = null;
       let countyData = null;
       let curData = null;
-      let field = 'newCases';
+
+      // Filter values
+      let fieldFilter = 'newCases';
       let timeFilter = 'last14Days';
+      let useLog = false;
+      let per100kFilter = false;
       let consistentY = true;
+
+      // UI state
       let tooltipValue = null;
       let tooltipShown = null;
 
@@ -110,21 +124,25 @@
         newCases: 'New Cases',
         newDeaths: 'New Deaths',
       };
+      Object.keys(dataPointLabels).forEach(k => {
+        dataPointLabels[per100kKey(k)] = dataPointLabels[k];
+      });
 
-      function processStates(csv) {
+      function processStates(csv, pop) {
         const nestedStates = d3
           .nest()
           .key(k => k.state)
           .entries(csv);
 
-        const [states, extents] = processGroups(nestedStates);
+        const popMap = processPopulations(pop);
+        const [states, extents] = processGroups(nestedStates, popMap);
         return {
           states,
           extents,
         };
       }
 
-      function processCounties(csv) {
+      function processCounties(csv, pop) {
         // First nest counties by state
         const nestedStates = d3
           .nest()
@@ -132,13 +150,14 @@
           .entries(csv);
 
         const stateMap = {};
+        const popMap = processPopulations(pop);
 
         nestedStates.forEach(state => {
           const counties = d3
             .nest()
             .key(k => k.county)
             .entries(state.values);
-          const [byCounty, extents] = processGroups(counties);
+          const [byCounty, extents] = processGroups(counties, popMap);
           state.counties = byCounty;
           state.extents = extents;
           stateMap[state.key] = {key: state.key, counties, extents};
@@ -147,16 +166,20 @@
         return stateMap;
       }
 
-      function processGroups(groups) {
-        const extents = {
-          date: [null, null],
-          cases: [null, null],
-          deaths: [null, null],
-          newCases: [null, null],
-          newDeaths: [null, null],
-        };
+      function processPopulations(pop) {
+        const map = {};
+        pop.forEach(p => {
+          map[p.fips] = parseInt(p.pop);
+        });
+        return map;
+      }
 
-        const keys = ['date', 'cases', 'deaths', 'newCases', 'newDeaths'];
+      function processGroups(groups, popMap) {
+        const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
+
+        const extents = {};
+        const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
+        extentKeys.forEach(key => (extents[key] = [0, null]));
 
         groups.forEach(group => {
           const newValues = [];
@@ -179,7 +202,21 @@
             }
             newValues.push(parsed);
 
-            keys.forEach(key => {
+            // Add population-normalized data
+            const pop = popMap[parsed.fips];
+            if (pop) {
+              parsed.pop = pop;
+              const p100kFactor = pop / 1e5;
+              valueKeys.forEach(key => {
+                if (typeof parsed[key] === 'number') {
+                  parsed[per100kKey(key)] = parsed[key] / p100kFactor;
+                }
+              });
+            } else {
+              group.noPopulation = true;
+            }
+
+            extentKeys.forEach(key => {
               if (extents[key][0] === null || parsed[key] < extents[key][0]) {
                 extents[key][0] = parsed[key];
               }
@@ -194,6 +231,10 @@
         return [groups, extents];
       }
 
+      function per100kKey(key) {
+        return `${key}_p100k`;
+      }
+
       function last(arr) {
         return arr[arr.length - 1];
       }
@@ -201,11 +242,7 @@
       function render(data) {
         const {extents, isCounties} = data;
 
-        const groups = data.groups.slice(0);
-        // Just sort by total cumulative cases
-        groups.sort((a, b) => {
-          return last(b.values).cases - last(a.values).cases;
-        });
+        const field = per100kFilter ? per100kKey(fieldFilter) : fieldFilter;
 
         const yScaleType = useLog ? 'scaleLog' : 'scaleLinear';
 
@@ -228,6 +265,14 @@
           nextDate.setDate(lastDate.getDate() - i);
           datesToShow.unshift(nextDate);
         }
+
+        const groups = data.groups.slice(0);
+
+        // Sort by the sum of the data currently being shown
+        groups.forEach(g => {
+          g.sortVal = d3.sum(g.values, v => v[field]);
+        });
+        groups.sort((a, b) => b.sortVal - a.sortVal);
 
         const useLarge = window.innerWidth >= 1024;
         const chartAspectRatio = 2.15;
@@ -324,12 +369,14 @@
         const $cells = $svg.selectAll('g.cell');
 
         // Fill each cell with a chart
+        let counter = 0;
         $cells.each(function(d, index) {
           const $cell = d3.select(this);
           const data = groups[index];
           if (!data) {
             return;
           }
+          counter++;
           const values = data.values;
           const totalCases = last(values).cases;
 
@@ -421,7 +468,7 @@
                 .attr('x1', chPos)
                 .attr('x2', chPos)
                 .classed('crosshair-hidden', false);
-              showTooltip(value, mouse, evt);
+              showTooltip(value, field, evt);
             }
           }
 
@@ -459,11 +506,20 @@
           // Add label above other elements to make it clickable
           $cell
             .append('text')
-            .text(data.key)
+            .text(`${counter}. ${data.key}`)
             .attr('x', 6)
             .attr('y', 14)
             .attr('class', 'cell-label')
             .on('click', onClick);
+
+          if (per100kFilter && data.noPopulation) {
+            $cell
+              .append('text')
+              .text('No population data')
+              .attr('x', chartWidth / 2)
+              .attr('y', chartHeight / 2)
+              .attr('class', 'cell-label-nopop');
+          }
         });
 
         // Add start dates
@@ -488,7 +544,7 @@
           .text(formatXDate(endDate));
       }
 
-      function showTooltip(value, mouse, evt) {
+      function showTooltip(value, field, evt) {
         tooltipValue = value;
         tooltipShown = true;
         const {offsetX, offsetY} = evt;
@@ -502,14 +558,19 @@
           css.left = `${offsetX + pad}px`;
         }
 
-        const dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'];
+        let dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'];
+        if (per100kFilter) {
+          dataPoints = dataPoints.map(per100kKey);
+        }
         const dataPointEl = dataPoints.map((k, i) => {
           return `
-					<div class="tooltip-dp flex-row flex-center ${k === field ? 'tooltip-dp-active' : ''}">
-						<div class="tooltip-dp-label">${dataPointLabels[k]}</div>
-						<div class="tooltip-dp-val">${formatTooltipValue(value[k])}</div>
-					</div>
-						`;
+      <div class="tooltip-dp flex-row flex-center ${k === field ? 'tooltip-dp-active' : ''}">
+      	<div class="tooltip-dp-label">${dataPointLabels[k]}</div>
+      	<div class="tooltip-dp-val">${formatTooltipValue(value[k])}${
+            per100kFilter ? ' per 100k' : ''
+          }</div>
+      </div>
+      	`;
         });
 
         const drilldownMsg = !value.county
@@ -593,6 +654,12 @@
             render(curData);
           }
         });
+        $('#cb-per-100k').change(function() {
+          per100kFilter = $(this).is(':checked');
+          if (curData) {
+            render(curData);
+          }
+        });
         $('#cb-consistent-y').change(function() {
           consistentY = $(this).is(':checked');
           if (curData) {
@@ -608,6 +675,7 @@
         curData = {groups: stateData.states, extents: stateData.extents};
         render(curData);
         $('.back-to-states').removeClass('shown');
+        $('.sub-geo-name').hide();
         hideTooltip();
       }
       function renderCounties(state) {
@@ -615,6 +683,9 @@
         curData = {groups: stateData.counties, extents: stateData.extents, isCounties: true};
         render(curData);
         $('.back-to-states').addClass('shown');
+        $('.sub-geo-name')
+          .text(state)
+          .show();
         hideTooltip();
       }
 
@@ -625,26 +696,32 @@
       }, 100);
       window.addEventListener('resize', resizeWindow);
 
-      d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv').then(
-        csv => {
-          stateData = processStates(csv);
-          const stateOptions = stateData.states
-            .sort((a, b) => a.key.localeCompare(b.key))
-            .map(s => `<option value="${s.key}">${s.key}</option>`)
-            .join('');
-          $('#state-select').html(
-            `<option value="allStates" selected>All States</option>${stateOptions}`,
-          );
-          renderAllStates();
-        },
-      );
+      Promise.all([
+        d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
+        d3.csv(
+          'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-sta.csv',
+        ),
+      ]).then(([csv, statePop]) => {
+        stateData = processStates(csv, statePop);
+        const stateOptions = stateData.states
+          .sort((a, b) => a.key.localeCompare(b.key))
+          .map(s => `<option value="${s.key}">${s.key}</option>`)
+          .join('');
+        $('#state-select').html(
+          `<option value="allStates" selected>All States</option>${stateOptions}`,
+        );
+        renderAllStates();
+      });
 
       // Delay this slightly – not needed until drill-down
       setTimeout(() => {
-        d3.csv(
-          'https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv',
-        ).then(csv => {
-          countyData = processCounties(csv);
+        Promise.all([
+          d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
+          d3.csv(
+            'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-cty.csv',
+          ),
+        ]).then(([csv, countyPop]) => {
+          countyData = processCounties(csv, countyPop);
         });
       }, 200);
 

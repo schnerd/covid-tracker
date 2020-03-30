@@ -43,7 +43,7 @@ div {
 }
 
 header {
-  margin: 15px 20px 20px;
+  margin: 15px 20px 0;
 }
 header h1 {
   font-size: 24px;
@@ -182,6 +182,7 @@ a:visited {
 
 #viz {
   position: relative;
+  margin-top: 20px;
 }
 
 .cell-clickable {
@@ -192,6 +193,14 @@ a:visited {
   text-shadow: 0px 0px 10px var(--bg);
   fill: var(--text);
   opacity: 0.5;
+  font-weight: bold;
+}
+.cell-label-nopop {
+  text-anchor: middle;
+  dominant-baseline: middle;
+  fill: var(--text);
+  opacity: 0.5;
+  font-size: 12px;
   font-weight: bold;
 }
 .x-tick {
@@ -290,12 +299,17 @@ body.touch #tooltip.shown {
 .tooltip-dp-val {
 }
 
+.sub-geo-name {
+  display: none;
+  margin: 0 20px 0;
+  font-size: 24px;
+}
 .back-to-states {
   display: none;
   cursor: pointer;
   color: var(--bar);
   font-size: 16px;
-  margin: 5px 20px 20px;
+  margin: 10px 20px 0;
 }
 .back-to-states.shown {
   display: inline-block;
