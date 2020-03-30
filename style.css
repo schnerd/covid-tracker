@@ -330,8 +330,8 @@ body.touch #tooltip.shown {
   margin-right: 15px;
 }
 .legend-square {
-  width: 20px;
-  height: 20px;
+  width: 1em;
+  height: 1em;
   margin-right: 6px;
 }
 
@@ -348,6 +348,9 @@ body.touch #tooltip.shown {
   background-color: var(--primary2);
 }
 
+.testing-legend {
+  display: none;
+}
 .testing-data-unavailable {
   display: none;
   margin: 20px;

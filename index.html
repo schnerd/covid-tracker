@@ -39,8 +39,13 @@
           <div>
             <h1>United States COVID-19 Tracker</h1>
             <h3>
-              Data from <a href="https://github.com/nytimes/covid-19-data">The New York Times</a>.
-              Dashboard updates automatically with source data.
+              Cases/Deaths data from
+              <a href="https://github.com/nytimes/covid-19-data" target="_blank"
+                >The New York Times</a
+              >. Testing data from
+              <a href="https://covidtracking.com/about-tracker/" target="_blank"
+                >The COVID Tracking Project</a
+              >. Dashboard updates automatically with source data.
             </h3>
             <h4>
               Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source code
@@ -777,6 +782,11 @@
         $('#field-select').change(function() {
           fieldFilter = $(this).val();
           isTestingData = fieldFilter === 'tests' || fieldFilter === 'newTests';
+          if (isTestingData) {
+            $('.testing-legend').show();
+          } else {
+            $('.testing-legend').hide();
+          }
           if (curData) {
             render(curData);
           }
