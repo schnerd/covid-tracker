@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>United States COVID-19 Spread Dashboard</title>
+    <title>United States COVID-19 Tracking Dashboard</title>
     <meta
       name="description"
       content="Dashboard of COVID-19 spread in USA using Data from The New York Times & US Census"
@@ -12,7 +12,7 @@
     <meta name="author" content="David Schnurr" />
     <meta name="Robots" content="INDEX,FOLLOW" />
 
-    <meta property="og:title" content="United States COVID-19 Spread Dashboard" />
+    <meta property="og:title" content="United States COVID-19 Tracking Dashboard" />
     <meta
       property="og:description"
       content="Dashboard of COVID-19 spread in USA using Data from The New York Times & US Census"
@@ -37,7 +37,7 @@
       <header>
         <div class="flex-row flex-center">
           <div>
-            <h1>United States COVID-19 Spread</h1>
+            <h1>United States COVID-19 Tracker</h1>
             <h3>
               Data from <a href="https://github.com/nytimes/covid-19-data">The New York Times</a>.
               Dashboard updates automatically with source data.
@@ -97,10 +97,23 @@
       </header>
       <div role="button" class="back-to-states">← Back to states</div>
       <h3 class="sub-geo-name"></h3>
+      <div class="legend testing-legend">
+        <div class="legend-item">
+          <div class="legend-square bg-primary1"></div>
+          <div>Positive Tests</div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-square bg-primary2"></div>
+          <div>Negative Tests</div>
+        </div>
+      </div>
 
       <div id="viz">
         <svg id="svg"></svg>
         <div id="tooltip"></div>
+      </div>
+      <div class="testing-data-unavailable">
+        Consistent county-level testing data is not yet available
       </div>
     </div>
 
@@ -125,12 +138,20 @@
       // UI state
       let tooltipValue = null;
       let tooltipShown = null;
+      let isTestingData = false;
 
       const dataPointLabels = {
         cases: 'Total Cases',
         deaths: 'Total Deaths',
+        tests: 'Total Tests',
+        positive: 'Total Positive',
+        pending: 'Total Pending',
+        negative: 'Total Negative',
         newCases: 'New Cases',
         newDeaths: 'New Deaths',
+        newTests: 'New Tests',
+        newPositive: 'New Positive',
+        newNegative: 'New Negative',
       };
       Object.keys(dataPointLabels).forEach(k => {
         dataPointLabels[per100kKey(k)] = dataPointLabels[k];
@@ -164,6 +185,7 @@
             date: new Date(Number(year), Number(month) - 1, Number(date)),
             positive: Number(c.positive),
             negative: Number(c.negative),
+            pending: Number(c.pending),
             tests: Number(c.total),
             newPositive: Number(c.positiveIncrease),
             newNegative: Number(c.negativeIncrease),
@@ -219,7 +241,15 @@
       function processGroups(groups, popMap, testingMap) {
         const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
         if (testingMap) {
-          valueKeys.push('positive', 'negative', 'tests', 'newPositive', 'newNegative', 'newTests');
+          valueKeys.push(
+            'positive',
+            'negative',
+            'pending',
+            'tests',
+            'newPositive',
+            'newNegative',
+            'newTests',
+          );
         }
 
         const extents = {};
@@ -251,6 +281,7 @@
             if (testing) {
               parsed.positive = testing.positive;
               parsed.negative = testing.negative;
+              parsed.pending = testing.pending;
               parsed.tests = testing.tests;
               parsed.newPositive = testing.newPositive;
               parsed.newNegative = testing.newNegative;
@@ -297,7 +328,20 @@
       function render(data) {
         const {extents, isCounties} = data;
 
+        // Make sure we're starting fresh
+        const $viz = d3.select('#viz');
+        const $svg = d3.select('#svg');
+        $svg.selectAll('*').remove();
+
         const field = per100kFilter ? per100kKey(fieldFilter) : fieldFilter;
+        if (isCounties && isTestingData) {
+          $('#viz').hide();
+          $('.testing-data-unavailable').show();
+          return;
+        } else {
+          $('#viz').show();
+          $('.testing-data-unavailable').hide();
+        }
 
         const yScaleType = useLog ? 'scaleLog' : 'scaleLinear';
 
@@ -394,13 +438,7 @@
         const yScale = makeYScale(extents[field]);
         const yAxis = makeAxis(yScale);
 
-        const $viz = d3.select('#viz');
-        const $svg = d3.select('#svg');
-
         $svg.attr('class', consistentY ? 'consistent-y' : '');
-
-        // Make sure we're starting fresh
-        $svg.selectAll('*').remove();
 
         // Create grid of rows and columns
         const $rows = $svg
@@ -423,7 +461,7 @@
             .enter()
             .append('g')
             .attr('class', 'cell')
-            .classed('cell-clickable', !isCounties)
+            .classed('cell-clickable', !isCounties && !isTestingData)
             .attr('transform', d => `translate(${d.col * colWidth}, 0)`);
         });
 
@@ -481,20 +519,44 @@
             }
           }
 
-          $cell
+          let stackFields;
+          if (isTestingData) {
+            stackFields =
+              field === 'newTests' ? ['newPositive', 'newNegative'] : ['positive', 'negative'];
+            if (per100kFilter) {
+              stackFields = stackFields.map(per100kKey);
+            }
+          } else {
+            stackFields = [field];
+          }
+
+          const stack = d3.stack().keys(stackFields)(shownValues);
+          const $layers = $cell
+            .selectAll('g.layer')
+            .data(stack, d => d.key)
+            .enter()
+            .append('g')
+            .attr('class', (d, i) => {
+              return `layer layer-${i + 1} layer-${d.key}`;
+            });
+
+          $layers
             .selectAll('.bar')
-            .data(shownValues)
+            .data(
+              l => l,
+              d => String(d.data.date.getTime()),
+            )
             .enter()
             .append('rect')
             .attr('class', 'bar')
             .attr('width', barWidth)
-            .attr('x', d => xScale(d.i))
+            .attr('x', d => xScale(d.data.i))
             .attr('y', d => {
-              const y = Math.floor(cellYScale(d[field]));
+              const y = Math.floor(cellYScale(d[1]));
               return Number.isNaN(y) ? chartHeight : y;
             })
             .attr('height', d => {
-              const y = Math.max(Math.ceil(chartHeight - cellYScale(d[field])), 0);
+              const y = Math.max(Math.ceil(chartHeight - cellYScale(d[1] - d[0])), 0);
               return Number.isNaN(y) ? 0 : y;
             });
 
@@ -613,24 +675,51 @@
           css.left = `${offsetX + pad}px`;
         }
 
-        let dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'];
-        if (per100kFilter) {
-          dataPoints = dataPoints.map(per100kKey);
+        let dataPoints;
+        if (field === 'tests') {
+          dataPoints = [
+            {key: 'positive', color: 'primary1'},
+            {key: 'negative', color: 'primary2'},
+            {key: 'pending'},
+            {key: 'tests'},
+            {key: 'cases'},
+            {key: 'deaths'},
+          ];
+        } else if (field === 'newTests') {
+          dataPoints = [
+            {key: 'newPositive', color: 'primary1'},
+            {key: 'newNegative', color: 'primary2'},
+            {key: 'newTests'},
+            {key: 'newCases'},
+            {key: 'newDeaths'},
+          ];
+        } else {
+          dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].map(k => ({
+            key: k,
+            color: k === field ? 'primary1' : null,
+          }));
         }
-        const dataPointEl = dataPoints.map((k, i) => {
+        if (per100kFilter) {
+          dataPoints = dataPoints.map(dp => ({
+            ...dp,
+            key: per100kKey(dp.key),
+          }));
+        }
+        const dataPointEl = dataPoints.map((dp, i) => {
           return `
-      <div class="tooltip-dp flex-row flex-center ${k === field ? 'tooltip-dp-active' : ''}">
-      	<div class="tooltip-dp-label">${dataPointLabels[k]}</div>
-      	<div class="tooltip-dp-val">${formatTooltipValue(value[k])}${
+        <div class="tooltip-dp flex-row flex-center">
+        	<div class="tooltip-dp-label ${dp.color || ''}">${dataPointLabels[dp.key]}</div>
+        	<div class="tooltip-dp-val">${formatTooltipValue(value[dp.key])}${
             per100kFilter ? ' per 100k' : ''
           }</div>
-      </div>
-      	`;
+        </div>
+        	`;
         });
 
-        const drilldownMsg = !value.county
-          ? '<div class="tooltip-drill"><span class="click">Click</span><span class="tap">Tap</span><span> to see counties</span></div>'
-          : '';
+        const drilldownMsg =
+          !value.county && !isTestingData
+            ? '<div class="tooltip-drill"><span class="click">Click</span><span class="tap">Tap</span><span> to see counties</span></div>'
+            : '';
 
         $('#tooltip')
           .addClass('shown')
@@ -687,6 +776,7 @@
         });
         $('#field-select').change(function() {
           fieldFilter = $(this).val();
+          isTestingData = fieldFilter === 'tests' || fieldFilter === 'newTests';
           if (curData) {
             render(curData);
           }

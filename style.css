@@ -7,7 +7,8 @@
   --baseLine: #aaa;
   --crosshair: #999;
   --tickText: #999;
-  --bar: #9b59b6;
+  --primary1: #9b59b6;
+  --primary2: #c38bda;
   --font: 'Montserrat', sans-serif;
   /*         --bg: #2c3e50;
     --text: #fff;
@@ -117,7 +118,7 @@ a:visited {
 
 /* When the checkbox is checked, add a blue background */
 .cb-input:checked ~ .cb-mark {
-  background-color: var(--bar);
+  background-color: var(--primary1);
 }
 
 /* Create the checkmark/indicator (hidden when not checked) */
@@ -168,7 +169,7 @@ a:visited {
   background-color: #ddd;
 }
 .select-css:focus {
-  box-shadow: 0 0 1px 3px var(--bar);
+  box-shadow: 0 0 1px 3px var(--primary1);
   box-shadow: 0 0 0 3px -moz-mac-focusring;
   outline: none;
 }
@@ -234,8 +235,11 @@ a:visited {
   opacity: 0;
 }
 
-.bar {
-  fill: var(--bar);
+.layer-1 .bar {
+  fill: var(--primary1);
+}
+.layer-2 .bar {
+  fill: var(--primary2);
 }
 
 @media (min-width: 1024px) {
@@ -288,13 +292,10 @@ body.touch #tooltip.shown {
   opacity: 0.4;
 }
 .tooltip-dp-label {
-  min-width: 90px;
+  min-width: 100px;
   white-space: nowrap;
   padding-right: 10px;
   color: #555;
-}
-.tooltip-dp-active .tooltip-dp-label {
-  color: var(--bar);
 }
 .tooltip-dp-val {
 }
@@ -307,12 +308,50 @@ body.touch #tooltip.shown {
 .back-to-states {
   display: none;
   cursor: pointer;
-  color: var(--bar);
+  color: var(--primary1);
   font-size: 16px;
   margin: 10px 20px 0;
 }
 .back-to-states.shown {
   display: inline-block;
+}
+
+.legend {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 20px 20px 0;
+  font-size: 20px;
+}
+.legend-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-right: 15px;
+}
+.legend-square {
+  width: 20px;
+  height: 20px;
+  margin-right: 6px;
+}
+
+.primary1 {
+  color: var(--primary1);
+}
+.primary2 {
+  color: var(--primary2);
+}
+.bg-primary1 {
+  background-color: var(--primary1);
+}
+.bg-primary2 {
+  background-color: var(--primary2);
+}
+
+.testing-data-unavailable {
+  display: none;
+  margin: 20px;
+  font-size: 18px;
 }
 
 @media (max-width: 600px) {
