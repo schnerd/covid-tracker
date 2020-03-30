@@ -856,7 +856,7 @@
         d3.csv(
           'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-sta.csv',
         ),
-        d3.csv('http://covidtracking.com/api/states/daily.csv'),
+        d3.csv('https://covidtracking.com/api/states/daily.csv'),
       ]).then(([csv, statePop, testingData]) => {
         stateData = processStates(csv, statePop, testingData);
         const stateOptions = stateData.states
