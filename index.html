@@ -316,6 +316,7 @@
             .enter()
             .append('g')
             .attr('class', 'cell')
+            .classed('cell-clickable', !isCounties)
             .attr('transform', d => `translate(${d.col * colWidth}, 0)`);
         });
 

@@ -184,6 +184,10 @@ a:visited {
   position: relative;
 }
 
+.cell-clickable {
+  cursor: pointer;
+}
+
 .cell-label {
   text-shadow: 0px 0px 10px var(--bg);
   fill: var(--text);
