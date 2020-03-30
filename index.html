@@ -527,7 +527,9 @@
           let stackFields;
           if (isTestingData) {
             stackFields =
-              field === 'newTests' ? ['newPositive', 'newNegative'] : ['positive', 'negative'];
+              fieldFilter === 'newTests'
+                ? ['newPositive', 'newNegative']
+                : ['positive', 'negative'];
             if (per100kFilter) {
               stackFields = stackFields.map(per100kKey);
             }
