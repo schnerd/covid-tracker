@@ -39,15 +39,11 @@
           <div>
             <h1>United States COVID-19 Spread</h1>
             <h3>
-              Data from The New York Times. Updates automatically with their
-              <a href="https://github.com/nytimes/covid-19-data">data on Github</a>. See their
-              tracker
-              <a href="https://www.nytimes.com/interactive/2020/us/coronavirus-us-cases.html"
-                >here</a
-              >.
+              Data from <a href="https://github.com/nytimes/covid-19-data">The New York Times</a>.
+              Dashboard updates automatically with source data.
             </h3>
             <h4>
-              Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source
+              Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source code
               available <a href="https://github.com/schnerd/us-covid-dashboard">on Github</a>.
             </h4>
           </div>
@@ -62,8 +58,10 @@
             <select id="field-select" class="select-css">
               <option value="newCases" selected>Daily New Cases</option>
               <option value="newDeaths">Daily New Deaths</option>
+              <option class="field-select-test-option" value="newTests">Daily New Tests</option>
               <option value="cases">Confirmed Cases</option>
               <option value="deaths">Confirmed Deaths</option>
+              <option class="field-select-test-option" value="tests">Testing</option>
             </select>
           </div>
           <div class="filter-item">
@@ -138,18 +136,52 @@
         dataPointLabels[per100kKey(k)] = dataPointLabels[k];
       });
 
-      function processStates(csv, pop) {
+      function processStates(csv, pop, testingCsv) {
         const nestedStates = d3
           .nest()
           .key(k => k.state)
           .entries(csv);
 
+        const testingByFips = processTestingData(testingCsv);
+
         const popMap = processPopulations(pop);
-        const [states, extents] = processGroups(nestedStates, popMap);
+        const [states, extents] = processGroups(nestedStates, popMap, testingByFips);
         return {
           states,
           extents,
         };
+      }
+
+      function processTestingData(csv) {
+        const byFips = {};
+        const testingData = csv.forEach(c => {
+          const year = c.date.substring(0, 4);
+          const month = c.date.substring(4, 6);
+          const date = c.date.substring(6, 8);
+          const fips = c.fips;
+
+          const value = {
+            date: new Date(Number(year), Number(month) - 1, Number(date)),
+            positive: Number(c.positive),
+            negative: Number(c.negative),
+            tests: Number(c.total),
+            newPositive: Number(c.positiveIncrease),
+            newNegative: Number(c.negativeIncrease),
+            newTests: Number(c.totalTestResultsIncrease),
+          };
+
+          // Add to our map
+          if (!byFips[fips]) {
+            byFips[fips] = {};
+          }
+          const forFips = byFips[fips];
+          if (forFips[value.date.getTime()]) {
+            console.error(`Multiple rows for for same state fips/date`, c);
+          }
+          forFips[value.date.getTime()] = value;
+        });
+
+        return byFips;
       }
 
       function processCounties(csv, pop) {
@@ -184,8 +216,11 @@
         return map;
       }
 
-      function processGroups(groups, popMap) {
+      function processGroups(groups, popMap, testingMap) {
         const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
+        if (testingMap) {
+          valueKeys.push('positive', 'negative', 'tests', 'newPositive', 'newNegative', 'newTests');
+        }
 
         const extents = {};
         const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
@@ -212,6 +247,16 @@
             }
             newValues.push(parsed);
 
+            const testing = (testingMap ? testingMap[parsed.fips] : {})[parsed.date.getTime()];
+            if (testing) {
+              parsed.positive = testing.positive;
+              parsed.negative = testing.negative;
+              parsed.tests = testing.tests;
+              parsed.newPositive = testing.newPositive;
+              parsed.newNegative = testing.newNegative;
+              parsed.newTests = testing.newTests;
+            }
+
             // Add population-normalized data
             const pop = popMap[parsed.fips];
             if (pop) {
@@ -227,10 +272,10 @@
             }
 
             extentKeys.forEach(key => {
-              if (extents[key][0] === null || parsed[key] < extents[key][0]) {
+              if (parsed[key] != undefined && parsed[key] < extents[key][0]) {
                 extents[key][0] = parsed[key];
               }
-              if (extents[key][1] === null || parsed[key] > extents[key][1]) {
+              if (parsed[key] != undefined && parsed[key] > extents[key][1]) {
                 extents[key][1] = parsed[key];
               }
             });
@@ -445,18 +490,12 @@
             .attr('width', barWidth)
             .attr('x', d => xScale(d.i))
             .attr('y', d => {
-              let y = cellYScale(d[field]);
-              if (Number.isNaN(y)) {
-                y = chartHeight;
-              }
-              return Math.floor(y);
+              const y = Math.floor(cellYScale(d[field]));
+              return Number.isNaN(y) ? chartHeight : y;
             })
             .attr('height', d => {
-              let y = cellYScale(d[field]);
-              if (Number.isNaN(y)) {
-                return 0;
-              }
-              return Math.max(Math.ceil(chartHeight - y), 0);
+              const y = Math.max(Math.ceil(chartHeight - cellYScale(d[field])), 0);
+              return Number.isNaN(y) ? 0 : y;
             });
 
           const $crosshair = $cell
@@ -717,8 +756,9 @@
         d3.csv(
           'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-sta.csv',
         ),
-      ]).then(([csv, statePop]) => {
-        stateData = processStates(csv, statePop);
+        d3.csv('http://covidtracking.com/api/states/daily.csv'),
+      ]).then(([csv, statePop, testingData]) => {
+        stateData = processStates(csv, statePop, testingData);
         const stateOptions = stateData.states
           .sort((a, b) => a.key.localeCompare(b.key))
           .map(s => `<option value="${s.key}">${s.key}</option>`)
@@ -736,7 +776,7 @@
           d3.csv(
             'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-cty.csv',
           ),
-        ]).then(([csv, countyPop]) => {
+        ]).then(([csv, countyPop, dailyTesting]) => {
           countyData = processCounties(csv, countyPop);
         });
       }, 200);
