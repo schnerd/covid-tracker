@@ -197,9 +197,9 @@
       if (!c.date) {
         return;
       }
-      const year = c.date.substring(0, 4);
-      const month = c.date.substring(4, 6);
-      const date = c.date.substring(6, 8);
+      const year = String(c.date).substring(0, 4);
+      const month = String(c.date).substring(4, 6);
+      const date = String(c.date).substring(6, 8);
       const fips = c.fips;
 
       const value = {
@@ -871,7 +871,7 @@
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
       d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-sta.csv'),
-      d3.csv('https://covidtracking.com/api/states/daily.csv'),
+      d3.json('https://covidtracking.com/api/states/daily'),
     ]).then(([csv, statePop, testingData]) => {
       stateData = processStates(csv, statePop, testingData);
 
