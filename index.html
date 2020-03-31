@@ -26,6 +26,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment@2.24.0/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/lodash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/history@4.10.1/umd/history.min.js"></script>
     <link
       href="https://fonts.googleapis.com/css?family=Montserrat:400,700&display=swap"
       rel="stylesheet"
@@ -56,7 +57,7 @@
         <div class="flex-row flex-center flex-wrap">
           <div class="filter-item">
             <select id="state-select" class="select-css">
-              <option value="allStates" selected>All States</option>
+              <option value="all" selected>All States</option>
             </select>
           </div>
           <div class="filter-item">
@@ -71,9 +72,9 @@
           </div>
           <div class="filter-item">
             <select id="time-select" class="select-css">
-              <option value="last7Days" selected>Last 7 days</option>
-              <option value="last14Days" selected>Last 14 days</option>
-              <option value="lastMonth">Last Month</option>
+              <option value="7d" selected>Last 7 days</option>
+              <option value="14d" selected>Last 14 days</option>
+              <option value="1mo">Last Month</option>
               <option value="all">All</option>
             </select>
           </div>
