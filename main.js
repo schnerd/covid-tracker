@@ -866,9 +866,7 @@
   function fetchStateData() {
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
-      d3.csv(
-        'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-sta.csv',
-      ),
+      d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-sta.csv'),
       d3.csv('https://covidtracking.com/api/states/daily.csv'),
     ]).then(([csv, statePop, testingData]) => {
       stateData = processStates(csv, statePop, testingData);
@@ -888,9 +886,7 @@
   function fetchCountyData() {
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
-      d3.csv(
-        'https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-cty.csv',
-      ),
+      d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-cty.csv'),
     ]).then(([csv, countyPop]) => {
       countyData = processCounties(csv, countyPop);
     });

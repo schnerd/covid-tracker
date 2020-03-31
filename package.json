@@ -1,5 +1,5 @@
 {
-  "name": "us-covid-data",
+  "name": "covid-tracker",
   "version": "1.0.0",
   "main": "index.js",
   "author": "David Schnurr <schnurr@gmail.com>",
