@@ -427,7 +427,7 @@
           if (useLog && domain[0] === 0) {
             domain[0] = 1;
           }
-          return d3[yScaleType]().domain(domain).range([chartHeight, 0]);
+          return d3[yScaleType]().domain(domain).range([chartHeight, 0]).nice();
         }
 
         function makeAxis(scale) {
