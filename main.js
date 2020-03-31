@@ -194,6 +194,9 @@
   function processTestingData(csv) {
     const byFips = {};
     csv.forEach((c) => {
+      if (!c.date) {
+        return;
+      }
       const year = c.date.substring(0, 4);
       const month = c.date.substring(4, 6);
       const date = c.date.substring(6, 8);
@@ -295,7 +298,7 @@
         }
         newValues.push(parsed);
 
-        const testing = (testingMap ? testingMap[parsed.fips] : {})[parsed.date.getTime()];
+        const testing = ((testingMap ? testingMap[parsed.fips] : {}) || {})[parsed.date.getTime()];
         if (testing) {
           parsed.positive = testing.positive;
           parsed.positivePct = testing.positive / testing.tests;
