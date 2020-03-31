@@ -214,7 +214,6 @@ function render(data) {
   const {extents, isCounties} = data;
 
   // Make sure we're starting fresh
-  const $viz = d3.select('#viz');
   const $svg = d3.select('#svg');
   $svg.selectAll('*').remove();
 
@@ -358,7 +357,6 @@ function render(data) {
     }
     counter++;
     const values = data.values;
-    const totalCases = last(values).cases;
 
     // Add baseline
     $cell
@@ -560,7 +558,6 @@ function showTooltip(value, field, evt) {
       {key: 'deaths'},
     ];
   } else if (fieldFilter === 'newTests') {
-    debugger;
     dataPoints = [
       {key: 'newPositive', color: 'primary1', pct: value.newPositivePct},
       {key: 'newNegative', color: 'primary2', pct: value.newNegativePct},
@@ -580,7 +577,7 @@ function showTooltip(value, field, evt) {
       key: per100kKey(dp.key),
     }));
   }
-  const dataPointEl = dataPoints.map((dp, i) => {
+  const dataPointEl = dataPoints.map((dp) => {
     return `
         	<div class="tooltip-dp-label ${dp.color || ''}">${dataPointLabels[dp.key]}</div>
         	<div class="tooltip-dp-val">${formatTooltipValue(value[dp.key])}${
@@ -709,7 +706,7 @@ function attachEvents() {
       render(curData);
     }
   });
-  $(document).on('click', function (evt) {
+  $(document).on('click', function () {
     hideTooltip();
   });
 }
@@ -751,12 +748,12 @@ Promise.all([
   renderAllStates();
 });
 
-// Delay this slightly – not needed until drill-down
+// Delay this slightly, not needed until drill-down
 setTimeout(() => {
   Promise.all([
     d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
     d3.csv('https://raw.githubusercontent.com/schnerd/us-covid-dashboard/master/fips-pop-cty.csv'),
-  ]).then(([csv, countyPop, dailyTesting]) => {
+  ]).then(([csv, countyPop]) => {
     countyData = processCounties(csv, countyPop);
   });
 }, 200);
