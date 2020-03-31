@@ -291,13 +291,25 @@ body.touch #tooltip.shown {
   margin-top: 6px;
   opacity: 0.4;
 }
+.tooltip-grid {
+  display: grid;
+  align-items: center;
+  grid-gap: 2px 8px;
+}
+.tooltip-grid.col-2 {
+  grid-template-columns: auto auto;
+}
+.tooltip-grid.col-3 {
+  grid-template-columns: auto auto auto;
+}
 .tooltip-dp-label {
-  min-width: 100px;
   white-space: nowrap;
-  padding-right: 10px;
   color: #555;
 }
 .tooltip-dp-val {
+}
+.tooltip-dp-pct {
+  opacity: 0.8;
 }
 
 .sub-geo-name {

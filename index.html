@@ -285,11 +285,16 @@
             const testing = (testingMap ? testingMap[parsed.fips] : {})[parsed.date.getTime()];
             if (testing) {
               parsed.positive = testing.positive;
+              parsed.positivePct = testing.positive / testing.tests;
               parsed.negative = testing.negative;
+              parsed.negativePct = testing.negative / testing.tests;
               parsed.pending = testing.pending;
+              parsed.pendingPct = testing.pending / testing.tests;
               parsed.tests = testing.tests;
               parsed.newPositive = testing.newPositive;
+              parsed.newPositivePct = testing.newPositive / testing.newTests;
               parsed.newNegative = testing.newNegative;
+              parsed.newNegativePct = testing.newNegative / testing.newTests;
               parsed.newTests = testing.newTests;
             }
 
@@ -674,20 +679,24 @@
           css.left = `${offsetX + pad}px`;
         }
 
+        const hasPercents = isTestingData;
+        const columnClass = hasPercents ? 'col-3' : 'col-2';
+
         let dataPoints;
         if (fieldFilter === 'tests') {
           dataPoints = [
-            {key: 'positive', color: 'primary1'},
-            {key: 'negative', color: 'primary2'},
-            {key: 'pending'},
+            {key: 'positive', color: 'primary1', pct: value.positivePct},
+            {key: 'negative', color: 'primary2', pct: value.negativePct},
+            {key: 'pending', pct: value.pendingPct},
             {key: 'tests'},
             {key: 'cases'},
             {key: 'deaths'},
           ];
         } else if (fieldFilter === 'newTests') {
+          debugger;
           dataPoints = [
-            {key: 'newPositive', color: 'primary1'},
-            {key: 'newNegative', color: 'primary2'},
+            {key: 'newPositive', color: 'primary1', pct: value.newPositivePct},
+            {key: 'newNegative', color: 'primary2', pct: value.newNegativePct},
             {key: 'newTests'},
             {key: 'newCases'},
             {key: 'newDeaths'},
@@ -706,12 +715,19 @@
         }
         const dataPointEl = dataPoints.map((dp, i) => {
           return `
-        <div class="tooltip-dp flex-row flex-center">
         	<div class="tooltip-dp-label ${dp.color || ''}">${dataPointLabels[dp.key]}</div>
         	<div class="tooltip-dp-val">${formatTooltipValue(value[dp.key])}${
             per100kFilter ? ' per 100k' : ''
           }</div>
-        </div>
+          ${
+            hasPercents
+              ? `
+            <div class="tooltip-dp-pct">
+              ${formatTooltipPct(dp.pct)}
+            </div>
+          `
+              : ''
+          }
         	`;
         });
 
@@ -724,9 +740,11 @@
           .addClass('shown')
           .css(css)
           .html(
-            `<div><h4>${formatTooltipDate(value.date)}</h4>${dataPointEl.join(
-              '',
-            )}${drilldownMsg}</div>`,
+            `<div><h4>${formatTooltipDate(value.date)}</h4>
+              <div class="tooltip-grid ${columnClass}">
+                ${dataPointEl.join('')}
+              </div>
+              ${drilldownMsg}</div>`,
           );
       }
 
@@ -756,6 +774,11 @@
       const tooltipFmt = d3.format(',d');
       function formatTooltipValue(n) {
         return tooltipFmt(n);
+      }
+
+      const pctFmt = d3.format('.1%');
+      function formatTooltipPct(n) {
+        return n != undefined ? `(${pctFmt(n)})` : '';
       }
 
       function attachEvents() {
