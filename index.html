@@ -765,10 +765,10 @@
 
       function formatYTick(n) {
         if (n >= 1e6) {
-          return `${Math.round(n / 1e6)}m`;
+          return `${n / 1e6}m`;
         }
         if (n >= 1e3) {
-          return `${Math.round(n / 1e3)}k`;
+          return `${n / 1e3}k`;
         }
         return n;
       }
