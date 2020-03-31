@@ -403,7 +403,7 @@
       const {values} = group;
       const fips = values[0].fips;
       const res = d3[aggFn](values, (v) => v[field]);
-      byFips[fips] = res;
+      byFips[Number(fips)] = res;
     });
     const extent = d3.extent(Object.values(byFips));
     return {byFips, extent};
@@ -416,14 +416,13 @@
     const $map = d3.select('#map');
     const {width, height} = $map.node().getBoundingClientRect();
 
-    const {byFips, extent} = aggMapData(groups, field);
-    const value = Object.values(byFips);
+    const {byFips} = aggMapData(groups, field);
+    const domain = Object.values(byFips).filter((v) => typeof v === 'number');
 
-    // https://gka.github.io/palettes/#/7|s|652781,9b59b6,ff79ab|ffffe0,ff005e,93003a|1|1
-    const colorScale = d3
-      .scaleCluster()
-      .domain(value)
-      .range(['#652781', '#783790', '#8e459d', '#a753a6', '#c260ab', '#df6dad', '#ff79ab']);
+    // https://gka.github.io/palettes/#/7|s|49006a,9b59b6,ffd09f|ffffe0,ff005e,93003a|1|1
+    const colors = ['#49006a', '#672682', '#874694', '#a666a0', '#c588a6', '#e3aba6', '#ffd09f'];
+    colors.reverse();
+    const colorScale = d3.scaleCluster().domain(domain).range(colors);
 
     const projection = d3
       .geoAlbersUsa()
@@ -443,7 +442,7 @@
       .attr('id', 'map-counties')
       .selectAll('path')
       .data(countyFeatures)
-      .join((enter) => enter.append('path').attr('class', 'map-county'))
+      .join((enter) => enter.append('path').attr('class', 'map-county map-feat'))
       .attr('d', path);
 
     const $states = $g
@@ -451,10 +450,12 @@
       .attr('id', 'map-states')
       .selectAll('path')
       .data(stateFeatures)
-      .join((enter) => enter.append('path').attr('class', 'map-state'))
+      .join((enter) => enter.append('path').attr('class', 'map-state map-feat'))
       .attr('d', path)
       .attr('fill', (d) => {
-        debugger;
+        const id = d.id;
+        const datum = byFips[id];
+        return datum != undefined ? colorScale(datum) : 'transparent';
       });
 
     const $borders = $g

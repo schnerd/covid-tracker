@@ -231,7 +231,7 @@ a:visited {
   height: auto;
   min-height: 250px;
   max-height: 500px;
-  border: 1px solid #ccc;
+  /* border: 1px solid #ccc; */
 }
 @media (min-width: 768px) {
   #viz-top {
@@ -245,20 +245,23 @@ a:visited {
 }
 #map-state-borders {
   fill: none;
-  stroke: var(--neutral4);
+  stroke: var(--bg);
+  stroke-opacity: 0.5;
   stroke-width: 1px;
   stroke-linejoin: round;
   stroke-linecap: round;
   pointer-events: none;
 }
 .map-county {
-  fill: #aaa;
-  stroke: #fff;
+  stroke: var(--bg);
+  stroke-opacity: 0.5;
   stroke-width: 0.5px;
 }
 .map-county:hover,
 .map-state:hover {
   fill: orange;
+}
+.map-state {
 }
 
 #grid {
