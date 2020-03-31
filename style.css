@@ -369,7 +369,7 @@ body.touch #tooltip.shown {
   flex-direction: row;
   align-items: center;
   margin: 20px 20px 0;
-  font-size: 20px;
+  font-size: 18px;
 }
 .legend-item {
   display: flex;
@@ -381,6 +381,11 @@ body.touch #tooltip.shown {
   width: 1em;
   height: 1em;
   margin-right: 6px;
+}
+@media (min-width: 600px) {
+  .legend {
+    font-size: 20px;
+  }
 }
 
 .primary1 {
