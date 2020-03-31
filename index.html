@@ -669,7 +669,8 @@
       function showTooltip(value, field, evt) {
         tooltipValue = value;
         tooltipShown = true;
-        const {offsetX, offsetY} = evt;
+        const offsetX = evt.layerX || evt.offsetX;
+        const offsetY = evt.layerY || evt.offsetY;
         const pad = 10;
         const css = {left: '', right: '', top: `${offsetY + pad}px`, bottom: ''};
         const winWidth = window.innerWidth;
