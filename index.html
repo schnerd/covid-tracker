@@ -84,7 +84,7 @@
               <span class="cb-label">Per 100k People</span>
             </label>
           </div>
-          <div class="filter-item">
+          <div class="filter-item" id="filter-use-log-scale">
             <label class="cb-container">
               <input type="checkbox" class="cb-input" id="cb-use-log-scale" />
               <span class="cb-mark"></span>
@@ -158,14 +158,14 @@
         newPositive: 'New Positive',
         newNegative: 'New Negative',
       };
-      Object.keys(dataPointLabels).forEach(k => {
+      Object.keys(dataPointLabels).forEach((k) => {
         dataPointLabels[per100kKey(k)] = dataPointLabels[k];
       });
 
       function processStates(csv, pop, testingCsv) {
         const nestedStates = d3
           .nest()
-          .key(k => k.state)
+          .key((k) => k.state)
           .entries(csv);
 
         const testingByFips = processTestingData(testingCsv);
@@ -180,7 +180,7 @@
 
       function processTestingData(csv) {
         const byFips = {};
-        const testingData = csv.forEach(c => {
+        const testingData = csv.forEach((c) => {
           const year = c.date.substring(0, 4);
           const month = c.date.substring(4, 6);
           const date = c.date.substring(6, 8);
@@ -215,16 +215,16 @@
         // First nest counties by state
         const nestedStates = d3
           .nest()
-          .key(k => k.state)
+          .key((k) => k.state)
           .entries(csv);
 
         const stateMap = {};
         const popMap = processPopulations(pop);
 
-        nestedStates.forEach(state => {
+        nestedStates.forEach((state) => {
           const counties = d3
             .nest()
-            .key(k => k.county)
+            .key((k) => k.county)
             .entries(state.values);
           const [byCounty, extents] = processGroups(counties, popMap);
           state.counties = byCounty;
@@ -237,7 +237,7 @@
 
       function processPopulations(pop) {
         const map = {};
-        pop.forEach(p => {
+        pop.forEach((p) => {
           map[p.fips] = parseInt(p.pop);
         });
         return map;
@@ -259,9 +259,9 @@
 
         const extents = {};
         const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
-        extentKeys.forEach(key => (extents[key] = [0, null]));
+        extentKeys.forEach((key) => (extents[key] = [0, null]));
 
-        groups.forEach(group => {
+        groups.forEach((group) => {
           const newValues = [];
           for (let i = 0; i < group.values.length; i++) {
             const prevRow = group.values[i - 1];
@@ -298,7 +298,7 @@
             if (pop) {
               parsed.pop = pop;
               const p100kFactor = pop / 1e5;
-              valueKeys.forEach(key => {
+              valueKeys.forEach((key) => {
                 if (typeof parsed[key] === 'number') {
                   parsed[per100kKey(key)] = parsed[key] / p100kFactor;
                 }
@@ -307,7 +307,7 @@
               group.noPopulation = true;
             }
 
-            extentKeys.forEach(key => {
+            extentKeys.forEach((key) => {
               if (parsed[key] != undefined && parsed[key] < extents[key][0]) {
                 extents[key][0] = parsed[key];
               }
@@ -372,13 +372,13 @@
 
         const groups = data.groups.slice(0);
 
-        groups.forEach(g => {
+        groups.forEach((g) => {
           if (field.startsWith('new')) {
             // For daily new cases / deaths, sort by the sum of the data currently being shown
-            g.sortVal = d3.sum(g.values, v => v[field]);
+            g.sortVal = d3.sum(g.values, (v) => v[field]);
           } else {
             // Otherwise sort by the last shown cumulative value
-            const lastVal = _.findLast(g.values, v => v[field] != undefined);
+            const lastVal = _.findLast(g.values, (v) => v[field] != undefined);
             g.sortVal = lastVal ? lastVal[field] : -1;
           }
         });
@@ -422,9 +422,7 @@
           if (useLog && domain[0] === 0) {
             domain[0] = 1;
           }
-          return d3[yScaleType]()
-            .domain(domain)
-            .range([chartHeight, 0]);
+          return d3[yScaleType]().domain(domain).range([chartHeight, 0]);
         }
 
         function makeAxis(scale) {
@@ -436,7 +434,7 @@
             )
             .tickSizeInner(-chartWidth)
             .tickSizeOuter(0)
-            .tickFormat(d => {
+            .tickFormat((d) => {
               return formatYTick(d);
             });
         }
@@ -453,13 +451,13 @@
           .enter()
           .append('g')
           .attr('class', 'row')
-          .attr('transform', row => `translate(${yAxisWidth}, ${row * rowHeight})`);
+          .attr('transform', (row) => `translate(${yAxisWidth}, ${row * rowHeight})`);
 
         // Add cells
-        $rows.each(function(row) {
+        $rows.each(function (row) {
           const lastItemNumber = (row + 1) * numCols;
           const numColsForRow = lastItemNumber > groups.length ? groups.length % numCols : numCols;
-          const range = d3.range(numColsForRow).map(i => ({row, col: i}));
+          const range = d3.range(numColsForRow).map((i) => ({row, col: i}));
           d3.select(this)
             .selectAll('g.cell')
             .data(range)
@@ -467,14 +465,14 @@
             .append('g')
             .attr('class', 'cell')
             .classed('cell-clickable', !isCounties && !isTestingData)
-            .attr('transform', d => `translate(${d.col * colWidth}, 0)`);
+            .attr('transform', (d) => `translate(${d.col * colWidth}, 0)`);
         });
 
         const $cells = $svg.selectAll('g.cell');
 
         // Fill each cell with a chart
         let counter = 0;
-        $cells.each(function(d, index) {
+        $cells.each(function (d, index) {
           const $cell = d3.select(this);
           const data = groups[index];
           if (!data) {
@@ -496,15 +494,12 @@
           let cellYScale = yScale;
           let cellYAxis = yAxis;
           if (!consistentY) {
-            const extent = d3.extent(values, d => d[field]);
+            const extent = d3.extent(values, (d) => d[field]);
             cellYScale = makeYScale(extent);
             cellYAxis = makeAxis(cellYScale);
           }
 
-          $cell
-            .append('g')
-            .attr('transform', 'translate(0,0)')
-            .call(cellYAxis);
+          $cell.append('g').attr('transform', 'translate(0,0)').call(cellYAxis);
 
           // Make sure we show all dates in proper locations (even if group has data missing at that date)
           const shownValues = [];
@@ -540,7 +535,7 @@
           const stack = d3.stack().keys(stackFields)(shownValues);
           const $layers = $cell
             .selectAll('g.layer')
-            .data(stack, d => d.key)
+            .data(stack, (d) => d.key)
             .enter()
             .append('g')
             .attr('class', (d, i) => {
@@ -550,19 +545,19 @@
           $layers
             .selectAll('.bar')
             .data(
-              l => l,
-              d => String(d.data.date.getTime()),
+              (l) => l,
+              (d) => String(d.data.date.getTime()),
             )
             .enter()
             .append('rect')
             .attr('class', 'bar')
             .attr('width', barWidth)
-            .attr('x', d => xScale(d.data.i))
-            .attr('y', d => {
+            .attr('x', (d) => xScale(d.data.i))
+            .attr('y', (d) => {
               const y = Math.floor(cellYScale(d[1]));
               return Number.isNaN(y) ? chartHeight : y;
             })
-            .attr('height', d => {
+            .attr('height', (d) => {
               const y = Math.max(Math.ceil(chartHeight - cellYScale(d[1] - d[0])), 0);
               return Number.isNaN(y) ? 0 : y;
             });
@@ -585,13 +580,10 @@
                 ? bisectIndex
                 : bisectIndex - 1;
             const date = datesToShow[index];
-            const value = shownValues.find(v => v.date.getTime() === date.getTime());
+            const value = shownValues.find((v) => v.date.getTime() === date.getTime());
             if (value && (value !== tooltipValue || !tooltipShown)) {
               const chPos = Math.round(xScale(index) + barWidth / 2);
-              $crosshair
-                .attr('x1', chPos)
-                .attr('x2', chPos)
-                .classed('crosshair-hidden', false);
+              $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
               showTooltip(value, field, evt);
             }
           }
@@ -621,7 +613,7 @@
             $hover
               .on('mousemove', onMouseMove)
               .on('click', onClick)
-              .on('mouseout', function() {
+              .on('mouseout', function () {
                 $crosshair.classed('crosshair-hidden', true);
                 hideTooltip();
               });
@@ -701,13 +693,13 @@
             {key: 'newDeaths'},
           ];
         } else {
-          dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].map(k => ({
+          dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].map((k) => ({
             key: k,
             color: k === field ? 'primary1' : null,
           }));
         }
         if (per100kFilter) {
-          dataPoints = dataPoints.map(dp => ({
+          dataPoints = dataPoints.map((dp) => ({
             ...dp,
             key: per100kKey(dp.key),
           }));
@@ -767,7 +759,7 @@
       }
 
       function attachEvents() {
-        $('#state-select').change(function() {
+        $('#state-select').change(function () {
           const val = $(this).val();
           window.scrollTo(0, 0);
           if (val === 'allStates') {
@@ -776,54 +768,57 @@
             renderCounties(val);
           }
         });
-        $('.back-to-states').click(function() {
+        $('.back-to-states').click(function () {
           $('#state-select').val('allStates');
           window.scrollTo(0, 0);
           renderAllStates();
         });
-        $('#field-select').change(function() {
+        $('#field-select').change(function () {
           fieldFilter = $(this).val();
           isTestingData = fieldFilter === 'tests' || fieldFilter === 'newTests';
+          useLog = false;
           if (isTestingData) {
             $('.testing-legend').show();
+            $('#filter-use-log-scale').hide();
           } else {
             $('.testing-legend').hide();
+            $('#filter-use-log-scale').show();
           }
           if (curData) {
             render(curData);
           }
         });
-        $('#time-select').change(function() {
+        $('#time-select').change(function () {
           timeFilter = $(this).val();
           if (curData) {
             render(curData);
           }
         });
-        $('#tooltip').click(function() {
+        $('#tooltip').click(function () {
           if (tooltipValue && !tooltipValue.county) {
             renderCounties(tooltipValue.state);
             $('#state-select').val(tooltipValue.state);
           }
         });
-        $('#cb-use-log-scale').change(function() {
+        $('#cb-use-log-scale').change(function () {
           useLog = $(this).is(':checked');
           if (curData) {
             render(curData);
           }
         });
-        $('#cb-per-100k').change(function() {
+        $('#cb-per-100k').change(function () {
           per100kFilter = $(this).is(':checked');
           if (curData) {
             render(curData);
           }
         });
-        $('#cb-consistent-y').change(function() {
+        $('#cb-consistent-y').change(function () {
           consistentY = $(this).is(':checked');
           if (curData) {
             render(curData);
           }
         });
-        $(document).on('click', function(evt) {
+        $(document).on('click', function (evt) {
           hideTooltip();
         });
       }
@@ -840,9 +835,7 @@
         curData = {groups: stateData.counties, extents: stateData.extents, isCounties: true};
         render(curData);
         $('.back-to-states').addClass('shown');
-        $('.sub-geo-name')
-          .text(state)
-          .show();
+        $('.sub-geo-name').text(state).show();
         hideTooltip();
       }
 
@@ -863,7 +856,7 @@
         stateData = processStates(csv, statePop, testingData);
         const stateOptions = stateData.states
           .sort((a, b) => a.key.localeCompare(b.key))
-          .map(s => `<option value="${s.key}">${s.key}</option>`)
+          .map((s) => `<option value="${s.key}">${s.key}</option>`)
           .join('');
         $('#state-select').html(
           `<option value="allStates" selected>All States</option>${stateOptions}`,
