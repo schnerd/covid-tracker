@@ -1,7 +1,9 @@
 :root {
-  /* Dark theme */
-
   --bg: #fff;
+  --bg-overlay: #fff;
+  --neutral2: #eee;
+  --neutral3: #ddd;
+  --neutral4: #ccc;
   --text: #000;
   --tickLine: #eee;
   --baseLine: #aaa;
@@ -10,11 +12,25 @@
   --primary1: #9b59b6;
   --primary2: #c38bda;
   --font: 'Montserrat', sans-serif;
-  /*         --bg: #2c3e50;
-    --text: #fff;
-    --tickLine: rgba(255, 255, 255, 0.3);
-    --tickText: rgba(255, 255, 255, 0.3); */
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18191a;
+    --bg-overlay: #27292b;
+    --neutral2: #27292b;
+    --neutral3: #33363a;
+    --neutral4: #474a4e;
+    --text: #fff;
+    --tickLine: #27292b;
+    --baseLine: #474a4e;
+    --crosshair: #999;
+    --tickText: #999;
+    --primary1: #9b59b6;
+    --primary2: #c38bda;
+  }
+}
+
 body {
   font: 12px sans-serif;
   margin: 0;
@@ -100,7 +116,7 @@ a:visited {
   left: 0;
   height: 18px;
   width: 18px;
-  background-color: #eee;
+  background-color: var(--neutral2);
   border-radius: 3px;
   transition: all 0.2s;
 }
@@ -113,7 +129,7 @@ a:visited {
 
 /* On mouse-over, add a grey background color */
 .cb-container:hover .cb-input:not(:checked) ~ .cb-mark {
-  background-color: #ccc;
+  background-color: var(--neutral3);
 }
 
 /* When the checkbox is checked, add a blue background */
@@ -159,14 +175,14 @@ a:visited {
   -moz-appearance: none;
   transition: all 0.2s;
   background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='silver'><polygon points='0,0 10,0 5,5'/></svg>")
-    no-repeat scroll 93% 64% #eee;
+    no-repeat scroll 93% 64% var(--neutral2);
   font-family: var(--font);
 }
 .select-css::-ms-expand {
   display: none;
 }
 .select-css:hover {
-  background-color: #ddd;
+  background-color: var(--neutral3);
 }
 .select-css:focus {
   box-shadow: 0 0 1px 3px var(--primary1);
@@ -273,7 +289,7 @@ body.touch .click {
   box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
   border-radius: 3px;
   padding: 8px;
-  background: var(--bg);
+  background: var(--bg-overlay);
 }
 /* Allow tapping tooltip on touch devices (for drilldown) */
 body.touch #tooltip.shown {
@@ -328,6 +344,21 @@ body.touch #tooltip.shown {
   display: inline-block;
 }
 
+@media (max-width: 600px) {
+  .back-to-states {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    background: var(--bg-overlay);
+    padding: 6px 10px;
+    border-radius: 3px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+  }
+}
+
 .legend {
   display: flex;
   flex-direction: row;
@@ -367,19 +398,4 @@ body.touch #tooltip.shown {
   display: none;
   margin: 20px;
   font-size: 18px;
-}
-
-@media (max-width: 600px) {
-  .back-to-states {
-    position: fixed;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
-    background: #fff;
-    padding: 6px 10px;
-    border-radius: 3px;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.4);
-    z-index: 100;
-  }
 }
