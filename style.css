@@ -69,6 +69,16 @@ header {
 header h1 {
   font-size: 24px;
   margin: 0;
+  line-height: 1.3;
+}
+.title-wrap {
+  flex-direction: row;
+  align-items: center;
+}
+.virus-icon {
+  width: 28px;
+  height: auto;
+  margin-right: 6px;
 }
 header h3 {
   margin: 5px 0 3px;
