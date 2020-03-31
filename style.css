@@ -63,6 +63,10 @@ div {
   flex-wrap: wrap;
 }
 
+.wrapper {
+  position: relative;
+}
+
 header {
   margin: 15px 20px 0;
 }
@@ -77,8 +81,10 @@ header h1 {
   }
 }
 .title-wrap {
+  display: flex;
   flex-direction: row;
   align-items: center;
+  text-decoration: none;
 }
 .virus-icon {
   width: 28px;
@@ -223,6 +229,123 @@ a:visited {
   position: relative;
   margin-top: 20px;
 }
+#viz-top {
+}
+#viz-map,
+#viz-overview,
+#svg-map,
+#svg-overview {
+  width: 100%;
+  height: auto;
+  min-height: 180px;
+  max-height: 500px;
+  /* border: 1px solid #ccc; */
+}
+#viz-map {
+  position: relative;
+  margin-top: 30px;
+}
+#svg-map {
+  margin: 0 auto;
+  max-width: 1000px;
+}
+@media (min-width: 768px) {
+  #viz-top {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+  }
+  #svg-overview {
+    height: 100%;
+  }
+  #viz-map {
+    margin-top: 0;
+  }
+}
+#map-states {
+  fill: var(--neutral2);
+}
+#map-state-borders {
+  fill: none;
+  stroke: #555;
+  stroke-opacity: 0.5;
+  stroke-width: 1px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.map-county {
+  stroke: #333;
+  stroke-opacity: 0.5;
+  stroke-width: 0.1;
+}
+.map-county:hover,
+.map-state:hover {
+  fill: orange;
+}
+#svg-map {
+  overflow: hidden;
+}
+
+#viz-map-header {
+  align-items: center;
+  padding-bottom: 5px;
+}
+@media (min-width: 600px) {
+  #viz-map-header {
+    padding-bottom: 0px;
+  }
+}
+#map-title {
+  color: var(--textSub);
+  font-size: 14px;
+  padding-bottom: 2px;
+}
+#map-legend {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+#map-no-data {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  transform: translateY(-50%);
+  color: var(--textSub);
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#map-no-data.shown {
+  opacity: 1;
+}
+.map-legend-item {
+  width: 40px;
+  height: 8px;
+  margin-right: 1px;
+  position: relative;
+}
+
+.map-legend-item-label {
+  line-height: 1;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  color: var(--textSub);
+  font-size: 11px;
+  padding-top: 2px;
+  white-space: nowrap;
+}
+.map-legend-item:first-child {
+  margin-right: 10px;
+}
+
+#grid {
+  margin-top: 30px;
+}
 
 .cell-clickable {
   cursor: pointer;
@@ -233,6 +356,9 @@ a:visited {
   fill: var(--text);
   opacity: 0.5;
   font-weight: bold;
+}
+#viz-overview .cell-label {
+  font-size: 20px;
 }
 .cell-label-nopop {
   text-anchor: middle;
@@ -254,8 +380,8 @@ a:visited {
 .tick text {
   fill: var(--tickText);
 }
-.consistent-y .cell:not(:first-child) .tick text,
-.consistent-y .cell:not(:first-child) .domain {
+#grid.consistent-y .cell:not(:first-child) .tick text,
+#grid.consistent-y .cell:not(:first-child) .domain {
   display: none;
 }
 .baseline {
@@ -284,11 +410,16 @@ a:visited {
   .cell-label {
     font-size: 16px;
   }
-  .tick text {
-    font-size: 12px;
-  }
+  .tick text,
   .x-tick {
     font-size: 12px;
+  }
+  #viz-overview .cell-label {
+    font-size: 24px;
+  }
+  #viz-overview .tick text,
+  #viz-overview .x-tick {
+    font-size: 14px;
   }
 }
 
@@ -319,7 +450,13 @@ body.touch #tooltip.shown {
 }
 #tooltip h4 {
   font-size: 14px;
-  margin: 0 0 4px 0;
+  line-height: 1;
+  margin: 0;
+}
+#tooltip h5 {
+  font-size: 12px;
+  margin: 4px 0 0 0;
+  color: var(--textSub);
 }
 #tooltip.shown {
   opacity: 1;
@@ -333,6 +470,7 @@ body.touch #tooltip.shown {
   display: grid;
   align-items: center;
   grid-gap: 2px 8px;
+  margin-top: 4px;
 }
 .tooltip-grid.col-2 {
   grid-template-columns: auto auto;
@@ -348,13 +486,9 @@ body.touch #tooltip.shown {
   opacity: 0.8;
 }
 
-.sub-geo-name {
-  display: none;
-  margin: 0 20px 0;
-  font-size: 24px;
-}
 .back-to-states {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
   cursor: pointer;
   color: var(--primary1);
   font-size: 16px;
@@ -362,6 +496,8 @@ body.touch #tooltip.shown {
 }
 .back-to-states.shown {
   display: inline-block;
+  opacity: 1;
+  pointer-events: all;
 }
 
 @media (max-width: 600px) {
