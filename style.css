@@ -5,13 +5,14 @@
   --neutral3: #ddd;
   --neutral4: #ccc;
   --text: #000;
+  --textSub: #555;
+  --textMuted: #777;
   --tickLine: #eee;
   --baseLine: #aaa;
   --crosshair: #999;
   --tickText: #999;
   --primary1: #9b59b6;
   --primary2: #c38bda;
-  --subtext: #555;
   --font: 'Montserrat', sans-serif;
 }
 
@@ -23,13 +24,14 @@
     --neutral3: #33363a;
     --neutral4: #474a4e;
     --text: #fff;
+    --textSub: #777;
+    --textMuted: #555;
     --tickLine: #27292b;
     --baseLine: #474a4e;
     --crosshair: #999;
     --tickText: #999;
     --primary1: #9b59b6;
     --primary2: #c38bda;
-    --subtext: #676f79;
   }
 }
 
@@ -70,11 +72,11 @@ header h1 {
 }
 header h3 {
   margin: 5px 0 3px;
-  color: #666;
+  color: var(--textSub);
 }
 header h4 {
   margin: 0 0 5px;
-  color: #999;
+  color: var(--textMuted);
 }
 a {
   color: currentColor;
@@ -122,11 +124,14 @@ a:visited {
   border-radius: 3px;
   transition: all 0.2s;
 }
+.cb-label {
+  transition: all 0.2s;
+}
 .cb-input:not(:checked) ~ .cb-label {
-  color: #666;
+  color: var(--textMuted);
 }
 .cb-container:hover .cb-input:not(:checked) ~ .cb-label {
-  color: #444;
+  color: var(--textSub);
 }
 
 /* On mouse-over, add a grey background color */
@@ -322,7 +327,7 @@ body.touch #tooltip.shown {
 }
 .tooltip-dp-label {
   white-space: nowrap;
-  color: var(--subtext);
+  color: var(--textSub);
 }
 .tooltip-dp-pct {
   opacity: 0.8;
