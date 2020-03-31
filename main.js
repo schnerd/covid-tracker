@@ -152,7 +152,7 @@
 
   function parseQs(qs) {
     const query = qs[0] === '?' ? qs.substring(1) : qs;
-    const vars = query.split('&');
+    const vars = query ? query.split('&') : [];
     const obj = {};
     for (let i = 0; i < vars.length; i++) {
       const [k, v] = vars[i].split('=').map(decodeURIComponent);
