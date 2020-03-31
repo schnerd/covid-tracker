@@ -595,6 +595,7 @@
 
           function onClick() {
             if (!isCounties) {
+              window.scrollTo(0, 0);
               renderCounties(data.key);
               $('#state-select').val(data.key);
             }
@@ -819,6 +820,7 @@
         });
         $('#tooltip').click(function () {
           if (tooltipValue && !tooltipValue.county) {
+            window.scrollTo(0, 0);
             renderCounties(tooltipValue.state);
             $('#state-select').val(tooltipValue.state);
           }
