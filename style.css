@@ -11,6 +11,7 @@
   --tickText: #999;
   --primary1: #9b59b6;
   --primary2: #c38bda;
+  --subtext: #555;
   --font: 'Montserrat', sans-serif;
 }
 
@@ -28,6 +29,7 @@
     --tickText: #999;
     --primary1: #9b59b6;
     --primary2: #c38bda;
+    --subtext: #676f79;
   }
 }
 
@@ -174,7 +176,7 @@ a:visited {
   -webkit-appearance: none;
   -moz-appearance: none;
   transition: all 0.2s;
-  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='silver'><polygon points='0,0 10,0 5,5'/></svg>")
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' fill='dimgrey'><polygon points='0,0 10,0 5,5'/></svg>")
     no-repeat scroll 93% 64% var(--neutral2);
   font-family: var(--font);
 }
@@ -320,9 +322,7 @@ body.touch #tooltip.shown {
 }
 .tooltip-dp-label {
   white-space: nowrap;
-  color: #555;
-}
-.tooltip-dp-val {
+  color: var(--subtext);
 }
 .tooltip-dp-pct {
   opacity: 0.8;
