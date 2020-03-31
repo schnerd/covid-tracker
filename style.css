@@ -223,6 +223,47 @@ a:visited {
   position: relative;
   margin-top: 20px;
 }
+#viz-top {
+}
+#map,
+#detail {
+  width: 100%;
+  height: auto;
+  min-height: 250px;
+  max-height: 500px;
+  border: 1px solid #ccc;
+}
+@media (min-width: 768px) {
+  #viz-top {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+  }
+}
+#map-states {
+  fill: var(--neutral2);
+}
+#map-state-borders {
+  fill: none;
+  stroke: var(--neutral4);
+  stroke-width: 1px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+.map-county {
+  fill: #aaa;
+  stroke: #fff;
+  stroke-width: 0.5px;
+}
+.map-county:hover,
+.map-state:hover {
+  fill: orange;
+}
+
+#grid {
+  margin-top: 10px;
+}
 
 .cell-clickable {
   cursor: pointer;

@@ -8,6 +8,9 @@
   let stateData = null;
   let countyData = null;
   let curData = null;
+  let stateFeatures = null;
+  let stateBorders = null;
+  let countyFeatures = null;
 
   // Filter values
   const filters = {
@@ -351,28 +354,13 @@
     return arr[arr.length - 1];
   }
 
+  let mapRenderCount = 0;
   function render(data) {
-    const {extents, isCounties} = data;
-
-    // Make sure we're starting fresh
-    const $svg = d3.select('#svg');
-    $svg.selectAll('*').remove();
-
+    const {extents} = data;
     const field = filters.per100k ? per100kKey(filters.field) : filters.field;
-    if (isCounties && isTestingData) {
-      $('#viz').hide();
-      $('.testing-data-unavailable').show();
-      return;
-    } else {
-      $('#viz').show();
-      $('.testing-data-unavailable').hide();
-    }
-
-    const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
 
     const firstDate = extents.date[0];
     const lastDate = extents.date[1];
-
     let daysToShow;
     if (filters.time === '7d') {
       daysToShow = 7;
@@ -389,6 +377,113 @@
       nextDate.setDate(lastDate.getDate() - i);
       datesToShow.unshift(nextDate);
     }
+
+    const options = {
+      field,
+      daysToShow,
+      datesToShow,
+    };
+
+    renderDetail(data, options);
+    renderGrid(data, options);
+
+    // Render Map (only the last invokation)
+    const _mapRenderCount = ++mapRenderCount;
+    fetchMapData().then(() => {
+      if (_mapRenderCount === mapRenderCount) {
+        renderMap(data, options);
+      }
+    });
+  }
+
+  function aggMapData(groups, field) {
+    const byFips = {};
+    let aggFn = filters.per100k ? 'mean' : 'sum';
+    groups.forEach((group) => {
+      const {values} = group;
+      const fips = values[0].fips;
+      const res = d3[aggFn](values, (v) => v[field]);
+      byFips[fips] = res;
+    });
+    const extent = d3.extent(Object.values(byFips));
+    return {byFips, extent};
+  }
+
+  function renderMap(data, options) {
+    const {field, daysToShow, datesToShow} = options;
+    const {groups, extents, isCounties} = data;
+
+    const $map = d3.select('#map');
+    const {width, height} = $map.node().getBoundingClientRect();
+
+    const {byFips, extent} = aggMapData(groups, field);
+    const value = Object.values(byFips);
+
+    // https://gka.github.io/palettes/#/7|s|652781,9b59b6,ff79ab|ffffe0,ff005e,93003a|1|1
+    const colorScale = d3
+      .scaleCluster()
+      .domain(value)
+      .range(['#652781', '#783790', '#8e459d', '#a753a6', '#c260ab', '#df6dad', '#ff79ab']);
+
+    const projection = d3
+      .geoAlbersUsa()
+      .translate([width / 2, height / 2])
+      .scale(width);
+    const path = d3.geoPath().projection(projection);
+
+    const $g = $map
+      .append('g')
+      .attr('class', 'map-g')
+      .attr('transform', 'translate(0, 0)')
+      .attr('width', width)
+      .attr('height', height);
+
+    const $counties = $g
+      .append('g')
+      .attr('id', 'map-counties')
+      .selectAll('path')
+      .data(countyFeatures)
+      .join((enter) => enter.append('path').attr('class', 'map-county'))
+      .attr('d', path);
+
+    const $states = $g
+      .append('g')
+      .attr('id', 'map-states')
+      .selectAll('path')
+      .data(stateFeatures)
+      .join((enter) => enter.append('path').attr('class', 'map-state'))
+      .attr('d', path)
+      .attr('fill', (d) => {
+        debugger;
+      });
+
+    const $borders = $g
+      .append('path')
+      .datum(stateBorders)
+      .attr('id', 'map-state-borders')
+      .attr('d', path);
+  }
+
+  function renderDetail(data, options) {}
+
+  function renderGrid(data, options) {
+    const {field, daysToShow, datesToShow} = options;
+    const {extents, isCounties} = data;
+
+    // Make sure we're starting fresh
+    const $svg = d3.select('#grid');
+    $svg.selectAll('*').remove();
+
+    if (isCounties && isTestingData) {
+      $('#viz').hide();
+      $('.testing-data-unavailable').show();
+      return;
+    } else {
+      $('#viz').show();
+      $('.testing-data-unavailable').hide();
+    }
+
+    const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
 
     const groups = data.groups.slice(0);
 
@@ -866,6 +961,20 @@
     }
   }, 100);
   window.addEventListener('resize', resizeWindow);
+
+  let mapDataPromise;
+  function fetchMapData() {
+    if (!mapDataPromise) {
+      mapDataPromise = d3
+        .json('https://raw.githubusercontent.com/schnerd/covid-tracker/master/us-counties.topojson')
+        .then((us) => {
+          stateFeatures = window.topojson.feature(us, us.objects.states).features;
+          stateBorders = window.topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+          countyFeatures = window.topojson.feature(us, us.objects.counties).features;
+        });
+    }
+    return mapDataPromise;
+  }
 
   function fetchStateData() {
     return Promise.all([
