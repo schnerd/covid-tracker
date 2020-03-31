@@ -788,8 +788,9 @@
   }
 
   const tooltipFmt = d3.format(',d');
+  const tooltipFmtPer100k = d3.format(',.1f');
   function formatTooltipValue(n) {
-    return tooltipFmt(n);
+    return filters.per100k ? tooltipFmtPer100k(n) : tooltipFmt(n);
   }
 
   const pctFmt = d3.format('.1%');
