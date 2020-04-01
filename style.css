@@ -63,6 +63,10 @@ div {
   flex-wrap: wrap;
 }
 
+.wrapper {
+  position: relative;
+}
+
 header {
   margin: 15px 20px 0;
 }
@@ -416,7 +420,13 @@ body.touch #tooltip.shown {
 }
 #tooltip h4 {
   font-size: 14px;
-  margin: 0 0 4px 0;
+  line-height: 1;
+  margin: 0;
+}
+#tooltip h5 {
+  font-size: 12px;
+  margin: 4px 0 0 0;
+  color: var(--textSub);
 }
 #tooltip.shown {
   opacity: 1;
@@ -430,6 +440,7 @@ body.touch #tooltip.shown {
   display: grid;
   align-items: center;
   grid-gap: 2px 8px;
+  margin-top: 4px;
 }
 .tooltip-grid.col-2 {
   grid-template-columns: auto auto;

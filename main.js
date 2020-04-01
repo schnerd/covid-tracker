@@ -53,6 +53,21 @@
     dataPointLabels[per100kKey(k)] = dataPointLabels[k];
   });
 
+  // On the map, "daily new" fields are averages
+  const mapDataPointLabels = {...dataPointLabels};
+  Object.keys(mapDataPointLabels).forEach((key) => {
+    if (key.startsWith('new')) {
+      mapDataPointLabels[key] = `Avg ${mapDataPointLabels[key]}`;
+    }
+  });
+
+  const timeLabels = {
+    '7d': 'Last 7 days',
+    '14d': 'Last 14 days',
+    '1mo': 'Last 30 days',
+    all: 'All-time',
+  };
+
   ////////////
   // Router //
   ////////////
@@ -593,6 +608,8 @@
     const {field, isCounties, stateFips} = options;
     const {groups} = data;
 
+    const allowDrilldown = !isCounties;
+
     const $map = d3.select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
     const mapWidth = width;
@@ -631,6 +648,9 @@
         domain.push(value);
       }
     });
+    if (domain.length === 0) {
+      domain.push(1);
+    }
     const min = d3.min(domain);
     const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
@@ -685,27 +705,33 @@
       .attr('opacity', isCounties ? 0 : 1);
 
     const $features = isCounties ? $counties : $states;
+
+    function onMouseEnter(d) {
+      const evt = d3.event;
+      if (d.label) {
+        showMapTooltip({value: d, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
+      }
+    }
+
     if (isTouchDevice) {
       $features
         .on('click', (d) => {
           // Dont let this bubble up to document click
           d3.event.stopPropagation();
-          console.log('show tooltip', d);
+          onMouseEnter(d);
         })
-        .on('mouseleave', (d) => {
+        .on('mouseleave', () => {
           hideTooltip();
         });
     } else {
       $features
         .on('click', (d) => {
-          // Render page for state
-          console.log('render state page');
+          if (allowDrilldown) {
+            setStateFilter(d.label);
+          }
         })
-        .on('mouseenter', (d) => {
-          console.log('show tooltip', d);
-        })
-        .on('mouseleave', (d) => {
-          console.log('hide tooltip', d);
+        .on('mouseenter', onMouseEnter)
+        .on('mouseleave', () => {
           hideTooltip();
         });
     }
@@ -1013,7 +1039,7 @@
         if (value && (value !== tooltipValue || !tooltipShown)) {
           const chPos = Math.round(xScale(date) + barWidth / 2);
           $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
-          showTooltip(value, field, evt, allowDrilldown && !isTestingData);
+          showChartTooltip({value, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
         }
       }
 
@@ -1085,16 +1111,36 @@
       .text(formatXDate(endDate));
   }
 
-  function showTooltip(value, field, evt, allowDrilldown) {
+  function showMapTooltip(options) {
+    const {value} = options;
+    showTooltip({
+      ...options,
+      title: value.label,
+      subtitle: timeLabels[filters.time],
+      fieldLabels: mapDataPointLabels,
+    });
+  }
+
+  function showChartTooltip(options) {
+    const {value} = options;
+    showTooltip({
+      ...options,
+      title: formatTooltipDate(value.date),
+      fieldLabels: dataPointLabels,
+    });
+  }
+
+  function showTooltip(options) {
+    const {value, field, evt, allowDrilldown, title, subtitle, fieldLabels} = options;
     tooltipValue = value;
     tooltipShown = true;
-    const offsetX = evt.layerX || evt.offsetX;
-    const offsetY = evt.layerY || evt.offsetY;
+    const offsetX = evt.pageX;
+    const offsetY = evt.pageY;
     const pad = 10;
     const css = {left: '', right: '', top: `${offsetY + pad}px`, bottom: ''};
     const winWidth = window.innerWidth;
     // If it overflows right
-    if (offsetX + 150 > winWidth) {
+    if (offsetX + 250 > winWidth) {
       css.right = `${winWidth - offsetX + pad}px`;
     } else {
       css.left = `${offsetX + pad}px`;
@@ -1135,7 +1181,7 @@
     }
     const dataPointEl = dataPoints.map((dp) => {
       return `
-        	<div class="tooltip-dp-label ${dp.color || ''}">${dataPointLabels[dp.key]}</div>
+        	<div class="tooltip-dp-label ${dp.color || ''}">${fieldLabels[dp.key]}</div>
         	<div class="tooltip-dp-val">${formatTooltipValue(value[dp.key])}${
         filters.per100k ? ' per 100k' : ''
       }</div>
@@ -1160,7 +1206,8 @@
       .toggleClass('clickable', allowDrilldown)
       .css(css)
       .html(
-        `<div><h4>${formatTooltipDate(value.date)}</h4>
+        `<div><h4>${title}</h4>
+        ${subtitle ? `<h5>${subtitle}</h5>` : ''}
               <div class="tooltip-grid ${columnClass}">
                 ${dataPointEl.join('')}
               </div>
