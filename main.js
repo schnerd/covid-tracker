@@ -552,22 +552,13 @@
 
   let isFirstMapRender = true;
   function renderMap(data, options) {
-    const {field, isCounties, daysToShow, datesToShow, stateFips} = options;
-    const {groups, extents} = data;
+    const {field, isCounties, stateFips} = options;
+    const {groups} = data;
 
     const $map = d3.select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
     const mapWidth = width;
     const mapHeight = height;
-
-    const {byFips} = aggMapData(groups, field);
-    const domain = Object.values(byFips).filter((v) => typeof v === 'number' && v > 0);
-
-    const min = d3.min(domain);
-    const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
-    const clusters = colorScale.clusters();
-    console.log(clusters);
-    renderMapLegend(clusters, min);
 
     const projection = d3
       .geoAlbersUsa()
@@ -585,9 +576,19 @@
         return _stateFips === fips.substring(0, fips.length === 4 ? 1 : 2);
       });
     }
+
     let stateFeaturesFiltered = isCounties
       ? stateFeatures.filter((f) => f.id === Number(stateFips))
       : stateFeatures;
+
+    const {byFips} = aggMapData(groups, field);
+    const domain = Object.values(byFips).filter((v) => typeof v === 'number' && v > 0);
+
+    const min = d3.min(domain);
+    const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
+    const clusters = colorScale.clusters();
+    console.log(clusters);
+    renderMapLegend(clusters, min);
 
     function fillColor(d) {
       const fips = d.id;
@@ -595,7 +596,8 @@
       return datum != undefined && datum !== 0 ? colorScale(datum) : mapNoDataColor;
     }
 
-    $g.select('#map-states')
+    const $states = $g
+      .select('#map-states')
       .selectAll('.map-state')
       .data(stateFeaturesFiltered, (f) => f.id)
       .join(
@@ -604,14 +606,17 @@
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
         },
-      )
+      );
+
+    $states
       .attr('d', path)
       .transition()
       .duration(isFirstMapRender ? 0 : 350)
       .attr('opacity', 1)
       .attr('fill', isCounties ? mapNoDataColor : fillColor);
 
-    $g.select('#map-counties')
+    const $counties = $g
+      .select('#map-counties')
       .selectAll('.map-county')
       .data(countyFeaturesFiltered, (f) => f.id)
       .join(
@@ -622,7 +627,9 @@
         },
       )
       .attr('d', path)
-      .attr('fill', fillColor)
+      .attr('fill', fillColor);
+
+    $counties
       .transition()
       .duration(isFirstMapRender ? 0 : 350)
       .attr('opacity', 1);
@@ -631,6 +638,32 @@
       .datum(stateBorders)
       .attr('d', path)
       .attr('opacity', isCounties ? 0 : 1);
+
+    const $features = isCounties ? $counties : $states;
+    if (isTouchDevice) {
+      $features
+        .on('click', (d) => {
+          // Dont let this bubble up to document click
+          d3.event.stopPropagation();
+          console.log('show tooltip', d);
+        })
+        .on('mouseleave', (d) => {
+          hideTooltip();
+        });
+    } else {
+      $features
+        .on('click', (d) => {
+          // Render page for state
+          console.log('render state page');
+        })
+        .on('mouseenter', (d) => {
+          console.log('show tooltip', d);
+        })
+        .on('mouseleave', (d) => {
+          console.log('hide tooltip', d);
+          hideTooltip();
+        });
+    }
 
     // Zoom to the correct location (anaimated on subsequent renders)
     const $gSel = isFirstMapRender ? $g : $g.transition().duration(750);
@@ -955,19 +988,16 @@
       if (isTouchDevice) {
         $hover.on('click', () => {
           // Dont let this bubble up to document click
-          d3.selectAll('.crosshair').classed('crosshair-hidden', true);
           d3.event.stopPropagation();
           onMouseMove.call(this);
         });
       } else {
-        $hover
-          .on('mousemove', onMouseMove)
-          .on('click', onClick)
-          .on('mouseout', function () {
-            $crosshair.classed('crosshair-hidden', true);
-            hideTooltip();
-          });
+        $hover.on('mousemove', onMouseMove).on('click', onClick);
       }
+      $cell.on('mouseleave', (d) => {
+        $crosshair.classed('crosshair-hidden', true);
+        hideTooltip();
+      });
 
       // Add label above other elements to make it clickable
       $cell
