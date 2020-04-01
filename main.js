@@ -455,20 +455,30 @@
     return {byFips, extent};
   }
 
+  // https://gka.github.io/palettes/#/7|s|49006a,9b59b6,ffd09f|ffffe0,ff005e,93003a|1|1
+  const mapColors = [
+    '#49006a',
+    '#672682',
+    '#874694',
+    '#a666a0',
+    '#c588a6',
+    '#e3aba6',
+    '#ffd09f',
+  ].reverse();
+
   function renderMap(data, options) {
     const {field, daysToShow, datesToShow} = options;
     const {groups, extents, isCounties} = data;
 
-    const $map = d3.select('#map');
+    const $map = d3.select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
 
     const {byFips} = aggMapData(groups, field);
     const domain = Object.values(byFips).filter((v) => typeof v === 'number');
 
-    // https://gka.github.io/palettes/#/7|s|49006a,9b59b6,ffd09f|ffffe0,ff005e,93003a|1|1
-    const colors = ['#49006a', '#672682', '#874694', '#a666a0', '#c588a6', '#e3aba6', '#ffd09f'];
-    colors.reverse();
-    const colorScale = d3.scaleCluster().domain(domain).range(colors);
+    const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
+    const clusters = colorScale.clusters();
+    renderMapLegend(clusters);
 
     const projection = d3
       .geoAlbersUsa()
@@ -498,6 +508,26 @@
       });
 
     const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
+  }
+  function renderMapLegend(clusters) {
+    const $legend = d3.select('#map-legend');
+    $legend
+      .selectAll('.map-legend-item')
+      .data([0].concat(clusters))
+      .join(
+        (enter) => {
+          const $item = enter.append('div').attr('class', 'map-legend-item');
+          $item.append('div').attr('class', 'map-legend-item-label');
+          return $item;
+        },
+        (update) => update,
+        (exit) => exit.remove(),
+      )
+      .each(function (d, i) {
+        $(this).css('background-color', mapColors[i]);
+      })
+      .select('.map-legend-item-label')
+      .text((d) => formatMapLegendTick(d));
   }
 
   function renderDetail(data, options) {}
@@ -894,19 +924,37 @@
   }
 
   function formatYTick(n) {
+    return formatNumNice(n);
+  }
+
+  function formatNumNice(n, precision) {
+    let abbrev;
     if (n >= 1e6) {
-      return `${n / 1e6}m`;
+      n = n / 1e6;
+      abbrev = 'm';
+    } else if (n >= 1e3) {
+      n = n / 1e3;
+      abbrev = 'k';
     }
-    if (n >= 1e3) {
-      return `${n / 1e3}k`;
+    if (precision !== undefined) {
+      // Need to parseFloat again to avoid scientific notation
+      n = parseFloat(n.toPrecision(precision));
     }
-    return n;
+    return abbrev ? `${n}${abbrev}` : n;
   }
 
   const tooltipFmt = d3.format(',d');
   const tooltipFmtPer100k = d3.format(',.1f');
   function formatTooltipValue(n) {
     return filters.per100k ? tooltipFmtPer100k(n) : tooltipFmt(n);
+  }
+
+  const mapLegendFormatPer100k = d3.format(',.1f');
+  function formatMapLegendTick(n) {
+    if (filters.per100k) {
+      return mapLegendFormatPer100k(n);
+    }
+    return formatNumNice(n, 2);
   }
 
   const pctFmt = d3.format('.1%');
