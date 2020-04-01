@@ -68,6 +68,21 @@
     all: 'All-time',
   };
 
+  // https://github.com/nytimes/covid-19-data#geographic-exceptions
+  const countyLabelToFips = {
+    'New York City': '36061',
+  };
+  const fipsRemapping = {
+    // Bronx -> NY
+    '36005': '36061',
+    // Kings -> NY,
+    '36047': '36061',
+    // Queens -> NY
+    '36081': '36061',
+    // Richmond -> NY
+    '36085': '36061',
+  };
+
   ////////////
   // Router //
   ////////////
@@ -348,7 +363,15 @@
   function processPopulations(pop) {
     const map = {};
     pop.forEach((p) => {
-      map[p.fips] = parseInt(p.pop);
+      // Normally there would be one population value per fips code,
+      // however there are geographic exceptions in our source file
+      // where counties are attributed to others. Use our fipsRemapping
+      // lookup to sum the populations where necessary.
+      const fips = fipsRemapping[p.fips] || p.fips;
+      if (map[fips] == undefined) {
+        map[fips] = 0;
+      }
+      map[fips] += parseInt(p.pop);
     });
     return map;
   }
@@ -362,8 +385,15 @@
         const prevRow = group.values[i - 1];
         const row = group.values[i];
         const [year, month, date] = row.date.split('-');
+
+        let fips = row.fips;
+        if (!fips && row.county) {
+          fips = countyLabelToFips[row.county];
+        }
+
         const parsed = {
           ...row,
+          fips,
           date: new Date(Number(year), Number(month) - 1, Number(date)),
           cases: Number(row.cases),
           deaths: Number(row.deaths),
@@ -582,7 +612,8 @@
     });
 
     return features.map((f) => {
-      const data = byFips[f.id];
+      const fips = fipsRemapping[f.id] || f.id;
+      const data = byFips[fips];
       return {
         id: f.id,
         feature: f,
@@ -685,7 +716,11 @@
       .selectAll('.map-county')
       .data(isCounties ? joinedData : [], (d) => d.id)
       .join(
-        (enter) => enter.append('path').attr('opacity', 0).attr('class', 'map-county map-feat'),
+        (enter) =>
+          enter
+            .append('path')
+            .attr('opacity', 0)
+            .attr('class', (d) => `map-county map-county-${d.id} map-feat`),
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
@@ -728,6 +763,8 @@
         .on('click', (d) => {
           if (allowDrilldown) {
             setStateFilter(d.label);
+          } else {
+            setStateFilter('all');
           }
         })
         .on('mouseenter', onMouseEnter)
@@ -1065,7 +1102,7 @@
       } else {
         $hover.on('mousemove', onMouseMove).on('click', onClick);
       }
-      $cell.on('mouseleave', (d) => {
+      $cell.on('mouseleave', () => {
         $crosshair.classed('crosshair-hidden', true);
         hideTooltip();
       });
