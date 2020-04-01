@@ -519,23 +519,61 @@
     });
   }
 
-  function aggMapData(groups, field) {
+  function aggMapData(groups, features) {
     const byFips = {};
+
+    const hasTests = groups[0].values[0].tests != undefined;
+    const fields = getValueKeys(hasTests);
+
     groups.forEach((group) => {
       const {values} = group;
-      const fips = values[0].fips;
+      const {fips, pop} = values[0];
 
-      let value;
-      if (field.startsWith('new')) {
-        let aggFn = filters.per100k ? 'mean' : 'sum';
-        value = d3[aggFn](values, (v) => v[field]);
-      } else {
-        value = last(values)[field];
+      // Just aggregate the number of new cases/etc across the selected time range
+      let value = {
+        fips,
+        label: group.key,
+        // New cases/deaths over last N days
+        cases: d3.sum(values, (v) => v.newCases),
+        deaths: d3.sum(values, (v) => v.newDeaths),
+        // Average of new daily cases/deahts over last N days
+        newCases: d3.mean(values, (v) => v.newCases),
+        newDeaths: d3.mean(values, (v) => v.newDeaths),
+      };
+
+      if (hasTests) {
+        value.tests = d3.sum(values, (v) => v.newTests);
+        value.positive = d3.sum(values, (v) => v.newPositive);
+        value.positivePct = value.positive / value.tests;
+        value.negative = d3.sum(values, (v) => v.newNegative);
+        value.negativePct = value.negative / value.tests;
+        value.pending = d3.sum(values, (v) => v.newPending);
+        value.pendingPct = value.pending / value.tests;
+        value.newTests = d3.mean(values, (v) => v.newTests);
+        value.newPositive = d3.mean(values, (v) => v.newPositive);
+        value.newPositivePct = value.newPositive / value.newTests;
+        value.newNegative = d3.mean(values, (v) => v.newNegative);
+        value.newNegativePct = value.newNegative / value.newTests;
       }
+
+      const p100kFactor = pop / 1e5;
+      fields.forEach((field) => {
+        if (typeof value[field] === 'number') {
+          value[per100kKey(field)] = value[field] / p100kFactor;
+        }
+      });
+
       byFips[Number(fips)] = value;
     });
-    const extent = d3.extent(Object.values(byFips));
-    return {byFips, extent};
+
+    return features.map((f) => {
+      const data = byFips[f.id];
+      return {
+        id: f.id,
+        feature: f,
+        ...data,
+      };
+    });
   }
 
   // https://gka.github.io/palettes/#/7|s|49006a,9b59b6,ffd09f|ffffe0,ff005e,93003a|1|1
@@ -581,25 +619,32 @@
       ? stateFeatures.filter((f) => f.id === Number(stateFips))
       : stateFeatures;
 
-    const {byFips} = aggMapData(groups, field);
-    const domain = Object.values(byFips).filter((v) => typeof v === 'number' && v > 0);
+    const joinedData = aggMapData(
+      groups,
+      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered,
+    );
 
+    const domain = [];
+    joinedData.forEach((d) => {
+      const value = d[field];
+      if (typeof value === 'number' && value > 0) {
+        domain.push(value);
+      }
+    });
     const min = d3.min(domain);
     const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
-    console.log(clusters);
     renderMapLegend(clusters, min);
 
     function fillColor(d) {
-      const fips = d.id;
-      const datum = byFips[fips];
+      const datum = d[field];
       return datum != undefined && datum !== 0 ? colorScale(datum) : mapNoDataColor;
     }
 
     const $states = $g
       .select('#map-states')
       .selectAll('.map-state')
-      .data(stateFeaturesFiltered, (f) => f.id)
+      .data(isCounties ? stateFeaturesFiltered : joinedData, (d) => d.id)
       .join(
         (enter) => enter.append('path').attr('opacity', 0).attr('class', 'map-state map-feat'),
         (update) => update,
@@ -609,7 +654,7 @@
       );
 
     $states
-      .attr('d', path)
+      .attr('d', (d) => path(d.feature))
       .transition()
       .duration(isFirstMapRender ? 0 : 350)
       .attr('opacity', 1)
@@ -618,7 +663,7 @@
     const $counties = $g
       .select('#map-counties')
       .selectAll('.map-county')
-      .data(countyFeaturesFiltered, (f) => f.id)
+      .data(isCounties ? joinedData : [], (d) => d.id)
       .join(
         (enter) => enter.append('path').attr('opacity', 0).attr('class', 'map-county map-feat'),
         (update) => update,
@@ -626,7 +671,7 @@
           exit.transition().duration(350).attr('opacity', 0).remove();
         },
       )
-      .attr('d', path)
+      .attr('d', (d) => path(d.feature))
       .attr('fill', fillColor);
 
     $counties
