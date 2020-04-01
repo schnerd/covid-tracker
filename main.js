@@ -521,6 +521,7 @@
   }
   function renderMapLegend(clusters) {
     const $legend = d3.select('#map-legend');
+    const maxCluster = last(clusters);
     $legend
       .selectAll('.map-legend-item')
       .data([0].concat(clusters))
@@ -959,11 +960,7 @@
     return filters.per100k ? tooltipFmtPer100k(n) : tooltipFmt(n);
   }
 
-  const mapLegendFormatPer100k = d3.format(',.1f');
   function formatMapLegendTick(n) {
-    if (filters.per100k) {
-      return mapLegendFormatPer100k(n);
-    }
     return formatNumNice(n, 2);
   }
 
@@ -1029,6 +1026,43 @@
     hideTooltip();
   }
 
+  function areInputsEqual(newInputs, lastInputs) {
+    if (newInputs.length !== lastInputs.length) {
+      return false;
+    }
+    for (var i = 0; i < newInputs.length; i++) {
+      if (newInputs[i] !== lastInputs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function memoizeOne(resultFn, isEqual) {
+    if (isEqual === void 0) {
+      isEqual = areInputsEqual;
+    }
+    var lastThis;
+    var lastArgs = [];
+    var lastResult;
+    var calledOnce = false;
+    function memoized() {
+      var newArgs = [];
+      for (var _i = 0; _i < arguments.length; _i++) {
+        newArgs[_i] = arguments[_i];
+      }
+      if (calledOnce && lastThis === this && isEqual(newArgs, lastArgs)) {
+        return lastResult;
+      }
+      lastResult = resultFn.apply(this, newArgs);
+      calledOnce = true;
+      lastThis = this;
+      lastArgs = newArgs;
+      return lastResult;
+    }
+    return memoized;
+  }
+
   const resizeWindow = _.throttle(() => {
     if (lastData) {
       render(lastData);
@@ -1078,43 +1112,6 @@
     ]).then(([csv, countyPop]) => {
       countyData = processCounties(csv, countyPop);
     });
-  }
-
-  function areInputsEqual(newInputs, lastInputs) {
-    if (newInputs.length !== lastInputs.length) {
-      return false;
-    }
-    for (var i = 0; i < newInputs.length; i++) {
-      if (newInputs[i] !== lastInputs[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function memoizeOne(resultFn, isEqual) {
-    if (isEqual === void 0) {
-      isEqual = areInputsEqual;
-    }
-    var lastThis;
-    var lastArgs = [];
-    var lastResult;
-    var calledOnce = false;
-    function memoized() {
-      var newArgs = [];
-      for (var _i = 0; _i < arguments.length; _i++) {
-        newArgs[_i] = arguments[_i];
-      }
-      if (calledOnce && lastThis === this && isEqual(newArgs, lastArgs)) {
-        return lastResult;
-      }
-      lastResult = resultFn.apply(this, newArgs);
-      calledOnce = true;
-      lastThis = this;
-      lastArgs = newArgs;
-      return lastResult;
-    }
-    return memoized;
   }
 
   if (filters.state === 'all') {
