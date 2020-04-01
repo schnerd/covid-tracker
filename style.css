@@ -285,10 +285,17 @@ a:visited {
 
 #viz-map-header {
   align-items: center;
+  padding-bottom: 5px;
+}
+@media (min-width: 600px) {
+  #viz-map-header {
+    padding-bottom: 0px;
+  }
 }
 #map-title {
   color: var(--textSub);
   font-size: 14px;
+  padding-bottom: 2px;
 }
 #map-legend {
   display: flex;
