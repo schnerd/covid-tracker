@@ -210,12 +210,65 @@
     const popMap = processPopulations(pop);
     stateData = processGroups(nestedStates, popMap, testingByFips);
 
-    usData = processUS();
+    const [usRawData, usRawTesting] = processUS(csv, testingByFips);
+    usData = processGroups(usRawData, popMap, usRawTesting);
   }
 
-  function processUS(csv, popMap, testingCsv) {
-    const values = [];
+  function processUS(csv, testingByFips) {
+    const aggNytKeys = ['cases', 'deaths'];
+    const aggTestKeys = [
+      'positive',
+      'negative',
+      'pending',
+      'tests',
+      'newPositive',
+      'newNegative',
+      'newTests',
+    ];
 
+    // Nest by date (easier to aggregate)
+    const nested = d3
+      .nest()
+      .key((k) => k.date)
+      .entries(csv);
+
+    const usValues = nested.map((n) => {
+      const stateValuesAtDate = n.values;
+      const usValuesAtDate = {
+        fips: '00',
+        date: stateValuesAtDate[0].date,
+      };
+      stateValuesAtDate.forEach((state) => {
+        aggNytKeys.forEach((key) => {
+          if (!usValuesAtDate[key]) {
+            usValuesAtDate[key] = 0;
+          }
+          usValuesAtDate[key] += Number(state[key]);
+        });
+      });
+      return usValuesAtDate;
+    });
+
+    // Aggregate testing data
+    const testsByDate = {};
+    Object.keys(testingByFips).forEach((fips) => {
+      const dates = testingByFips[fips];
+      Object.keys(dates).forEach((date) => {
+        if (!testsByDate[date]) {
+          testsByDate[date] = {};
+        }
+        const stateValueAtDate = dates[date];
+        const usValueAtDate = testsByDate[date];
+        aggTestKeys.forEach((key) => {
+          if (!usValueAtDate[key]) {
+            usValueAtDate[key] = 0;
+          }
+          usValueAtDate[key] += stateValueAtDate[key];
+        });
+      });
+    });
+
+    return [[{key: 'United States', values: usValues}], {'00': testsByDate}];
   }
 
   function processTestingData(csv) {
@@ -230,6 +283,7 @@
       const fips = c.fips;
 
       const value = {
+        fips,
         date: new Date(Number(year), Number(month) - 1, Number(date)),
         positive: Number(c.positive),
         negative: Number(c.negative),
@@ -349,9 +403,8 @@
     return groups;
   }
 
-  const filterData = memoizeOne((data, datesToShow) => {
-    const {groups, isCounties} = data;
-    const valueKeys = getValueKeys(!isCounties);
+  function filterData(groups, datesToShow, hasTestingData) {
+    const valueKeys = getValueKeys(hasTestingData);
 
     const extents = {};
     const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
@@ -396,8 +449,11 @@
       };
     });
 
-    return {...data, groups: newGroups, extents};
-  });
+    return {groups: newGroups, extents};
+  }
+
+  const filterGridData = memoizeOne(filterData);
+  const filterOverviewData = memoizeOne(filterData);
 
   function per100kKey(key) {
     return `${key}_p100k`;
@@ -410,6 +466,7 @@
   let mapRenderCount = 0;
   function render(data) {
     lastData = data;
+    const {groups, overview, isCounties} = data;
 
     const field = filters.per100k ? per100kKey(filters.field) : filters.field;
 
@@ -430,22 +487,33 @@
       datesToShow.unshift(nextDate);
     }
 
-    const filteredData = filterData(data, datesToShow);
+    if (isCounties && isTestingData) {
+      $('#viz').hide();
+      $('.testing-data-unavailable').show();
+      return;
+    } else {
+      $('#viz').show();
+      $('.testing-data-unavailable').hide();
+    }
+
+    const gridData = filterGridData(groups, datesToShow, !isCounties);
+    const overviewData = filterOverviewData(overview, datesToShow, false);
 
     const options = {
       field,
       daysToShow,
       datesToShow,
+      isCounties,
     };
 
-    renderDetail(filteredData, options);
-    renderGrid(filteredData, options);
+    renderOverview(overviewData, options);
+    renderGrid(gridData, options);
 
-    // Render Map (only the last invokation)
+    // Render map after fetching map data (debounce the render calls)
     const _mapRenderCount = ++mapRenderCount;
     fetchMapData().then(() => {
       if (_mapRenderCount === mapRenderCount) {
-        renderMap(filteredData, options);
+        renderMap(gridData, options);
       }
     });
   }
@@ -481,8 +549,8 @@
   ].reverse();
 
   function renderMap(data, options) {
-    const {field, daysToShow, datesToShow} = options;
-    const {groups, extents, isCounties} = data;
+    const {field, isCounties, daysToShow, datesToShow} = options;
+    const {groups, extents} = data;
 
     const $map = d3.select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
@@ -519,13 +587,13 @@
         const id = d.id;
         const datum = byFips[id];
         return datum != undefined ? colorScale(datum) : 'transparent';
-      }):
+      });
 
     const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
   }
+
   function renderMapLegend(clusters) {
     const $legend = d3.select('#map-legend');
-    const maxCluster = last(clusters);
     $legend
       .selectAll('.map-legend-item')
       .data([0].concat(clusters))
@@ -545,24 +613,28 @@
       .text((d) => formatMapLegendTick(d));
   }
 
-  function renderDetail(data, options) {}
+  function renderOverview(data, options) {
+    const $svg = d3.select('#svg-overview');
+    renderCharts($svg, data, {
+      ...options,
+      allowDrilldown: false,
+    });
+  }
 
   function renderGrid(data, options) {
-    const {field, daysToShow, datesToShow} = options;
-    const {extents, isCounties} = data;
+    const $svg = d3.select('#grid');
+    renderCharts($svg, data, {
+      ...options,
+      allowDrilldown: !options.isCounties,
+    });
+  }
+
+  function renderCharts($svg, data, options) {
+    const {field, daysToShow, datesToShow, allowDrilldown} = options;
+    const {extents} = data;
 
     // Make sure we're starting fresh
-    const $svg = d3.select('#grid');
     $svg.selectAll('*').remove();
-
-    if (isCounties && isTestingData) {
-      $('#viz').hide();
-      $('.testing-data-unavailable').show();
-      return;
-    } else {
-      $('#viz').show();
-      $('.testing-data-unavailable').hide();
-    }
 
     const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
 
@@ -644,33 +716,6 @@
     }
     const yScale = makeYScale(extents[field]);
     const yAxis = makeAxis(yScale);
-
-    $svg.attr('class', filters.consistentY ? 'consistent-y' : '');
-
-    // Create grid of rows and columns
-    const $rows = $svg
-      .attr('viewBox', [0, 0, winWidth, totalHeight])
-      .selectAll('g.row')
-      .data(d3.range(numRows))
-      .enter()
-      .append('g')
-      .attr('class', 'row')
-      .attr('transform', (row) => `translate(${yAxisWidth}, ${row * rowHeight})`);
-
-    // Add cells
-    $rows.each(function (row) {
-      const lastItemNumber = (row + 1) * numCols;
-      const numColsForRow = lastItemNumber > groups.length ? groups.length % numCols : numCols;
-      const range = d3.range(numColsForRow).map((i) => ({row, col: i}));
-      d3.select(this)
-        .selectAll('g.cell')
-        .data(range)
-        .enter()
-        .append('g')
-        .attr('class', 'cell')
-        .classed('cell-clickable', !isCounties && !isTestingData)
-        .attr('transform', (d) => `translate(${d.col * colWidth}, 0)`);
-    });
 
     const $cells = $svg.selectAll('g.cell');
 
@@ -772,7 +817,7 @@
       }
 
       function onClick() {
-        if (!isCounties) {
+        if (!allowDrilldown) {
           setStateFilter(data.key);
         }
       }
@@ -1017,14 +1062,18 @@
   }
 
   function renderAllStates() {
-    render({groups: stateData});
+    render({groups: stateData, overview: usData});
     $('.back-to-states').removeClass('shown');
     $('.sub-geo-name').hide();
     hideTooltip();
   }
   function renderCounties(state) {
-    const stateData = countyData[state];
-    render({groups: stateData.counties, isCounties: true});
+    const countiesForState = countyData[state];
+
+    const overviewData = stateData.filter((s) => s.key === state);
+
+    render({groups: countiesForState.counties, overview: overviewData, isCounties: true});
+
     $('.back-to-states').addClass('shown');
     $('.sub-geo-name').text(state).show();
     hideTooltip();
