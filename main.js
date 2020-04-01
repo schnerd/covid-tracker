@@ -7,6 +7,7 @@
   // Data
   let stateData = null;
   let countyData = null;
+  let usData = null;
   let lastData = null;
 
   // Map features
@@ -207,7 +208,14 @@
     const testingByFips = processTestingData(testingCsv);
 
     const popMap = processPopulations(pop);
-    return processGroups(nestedStates, popMap, testingByFips);
+    stateData = processGroups(nestedStates, popMap, testingByFips);
+
+    usData = processUS();
+  }
+
+  function processUS(csv, popMap, testingCsv) {
+    const values = [];
+
   }
 
   function processTestingData(csv) {
@@ -265,7 +273,7 @@
       stateMap[state.key] = {key: state.key, counties: byCounty};
     });
 
-    return stateMap;
+    countyData = stateMap;
   }
 
   function processPopulations(pop) {
@@ -511,11 +519,7 @@
         const id = d.id;
         const datum = byFips[id];
         return datum != undefined ? colorScale(datum) : 'transparent';
-      })
-      .on('mouseenter', (d) => {
-        const fipsNum = d.id;
-        showTooltip();
-      });
+      }):
 
     const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
   }
@@ -1090,7 +1094,7 @@
       d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-sta.csv'),
       d3.json('https://covidtracking.com/api/states/daily'),
     ]).then(([csv, statePop, testingData]) => {
-      stateData = processStates(csv, statePop, testingData);
+      processStates(csv, statePop, testingData);
 
       // Populate state select
       const stateOptions = stateData
@@ -1110,7 +1114,7 @@
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
       d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-cty.csv'),
     ]).then(([csv, countyPop]) => {
-      countyData = processCounties(csv, countyPop);
+      processCounties(csv, countyPop);
     });
   }
 
