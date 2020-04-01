@@ -7,9 +7,7 @@
   // Data
   let stateData = null;
   let countyData = null;
-  let stateDataFiltered = null;
-  let countyDataFiltered = null;
-  let curData = null;
+  let lastData = null;
 
   // Map features
   let stateFeatures = null;
@@ -403,6 +401,8 @@
 
   let mapRenderCount = 0;
   function render(data) {
+    lastData = data;
+
     const field = filters.per100k ? per100kKey(filters.field) : filters.field;
 
     let daysToShow;
@@ -444,12 +444,18 @@
 
   function aggMapData(groups, field) {
     const byFips = {};
-    let aggFn = filters.per100k ? 'mean' : 'sum';
     groups.forEach((group) => {
       const {values} = group;
       const fips = values[0].fips;
-      const res = d3[aggFn](values, (v) => v[field]);
-      byFips[Number(fips)] = res;
+
+      let value;
+      if (field.startsWith('new')) {
+        let aggFn = filters.per100k ? 'mean' : 'sum';
+        value = d3[aggFn](values, (v) => v[field]);
+      } else {
+        value = last(values)[field];
+      }
+      byFips[Number(fips)] = value;
     });
     const extent = d3.extent(Object.values(byFips));
     return {byFips, extent};
@@ -505,6 +511,10 @@
         const id = d.id;
         const datum = byFips[id];
         return datum != undefined ? colorScale(datum) : 'transparent';
+      })
+      .on('mouseenter', (d) => {
+        const fipsNum = d.id;
+        showTooltip();
       });
 
     const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
@@ -1006,24 +1016,22 @@
   }
 
   function renderAllStates() {
-    curData = {groups: stateData};
-    render(curData);
+    render({groups: stateData});
     $('.back-to-states').removeClass('shown');
     $('.sub-geo-name').hide();
     hideTooltip();
   }
   function renderCounties(state) {
     const stateData = countyData[state];
-    curData = {groups: stateData.counties, isCounties: true};
-    render(curData);
+    render({groups: stateData.counties, isCounties: true});
     $('.back-to-states').addClass('shown');
     $('.sub-geo-name').text(state).show();
     hideTooltip();
   }
 
   const resizeWindow = _.throttle(() => {
-    if (curData) {
-      render(curData);
+    if (lastData) {
+      render(lastData);
     }
   }, 100);
   window.addEventListener('resize', resizeWindow);
