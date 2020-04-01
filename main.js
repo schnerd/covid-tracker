@@ -58,7 +58,7 @@
   const mapDataPointLabels = {...dataPointLabels};
   Object.keys(mapDataPointLabels).forEach((key) => {
     if (key.startsWith('new')) {
-      mapDataPointLabels[key] = `Avg ${mapDataPointLabels[key]}`;
+      mapDataPointLabels[key] = `Avg ${mapDataPointLabels[key].replace('New', 'Daily')}`;
     }
   });
 
@@ -655,7 +655,7 @@
 
     const fieldTitle = mapDataPointLabels[field];
     const timeTitle = timeLabels[filters.time];
-    d3.select('#map-title').text(`${fieldTitle}, ${timeTitle}`);
+    d3.select('#map-title').text(`Map of ${fieldTitle}, ${timeTitle}`);
 
     const $g = $map.select('#map-g').attr('width', mapWidth).attr('height', mapHeight);
 
@@ -1114,7 +1114,7 @@
       }
       $cell.on('mouseleave', () => {
         $crosshair.classed('crosshair-hidden', true);
-        hideTooltip();
+        hideTooltipSoon();
       });
 
       // Add label above other elements to make it clickable
