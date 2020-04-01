@@ -466,7 +466,7 @@
   let mapRenderCount = 0;
   function render(data) {
     lastData = data;
-    const {groups, overview, isCounties} = data;
+    const {groups, overview, isCounties, stateFips} = data;
 
     const field = filters.per100k ? per100kKey(filters.field) : filters.field;
 
@@ -504,6 +504,7 @@
       daysToShow,
       datesToShow,
       isCounties,
+      stateFips,
     };
 
     renderOverview(overviewData, options);
@@ -547,67 +548,124 @@
     '#e3aba6',
     '#ffd09f',
   ].reverse();
+  const mapNoDataColor = '#999';
 
+  let isFirstMapRender = true;
   function renderMap(data, options) {
-    const {field, isCounties, daysToShow, datesToShow} = options;
+    const {field, isCounties, daysToShow, datesToShow, stateFips} = options;
     const {groups, extents} = data;
 
     const $map = d3.select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
+    const mapWidth = width;
+    const mapHeight = height;
 
     const {byFips} = aggMapData(groups, field);
-    const domain = Object.values(byFips).filter((v) => typeof v === 'number');
+    const domain = Object.values(byFips).filter((v) => typeof v === 'number' && v > 0);
 
+    const min = d3.min(domain);
     const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
-    renderMapLegend(clusters);
+    console.log(clusters);
+    renderMapLegend(clusters, min);
 
     const projection = d3
       .geoAlbersUsa()
-      .translate([width / 2, height / 2])
-      .scale(width);
+      .translate([mapWidth / 2, mapHeight / 2])
+      .scale(mapWidth);
     const path = d3.geoPath().projection(projection);
 
-    const $g = $map.select('#map-g').attr('width', width).attr('height', height);
+    const $g = $map.select('#map-g').attr('width', mapWidth).attr('height', mapHeight);
 
-    const $counties = $g
-      .select('#map-counties')
-      .selectAll('path')
-      .data(countyFeatures)
-      .join((enter) => enter.append('path').attr('class', 'map-county map-feat'))
-      .attr('d', path);
-
-    const $states = $g
-      .select('#map-states')
-      .selectAll('path')
-      .data(stateFeatures)
-      .join((enter) => enter.append('path').attr('class', 'map-state map-feat'))
-      .attr('d', path)
-      .attr('fill', (d) => {
-        const id = d.id;
-        const datum = byFips[id];
-        return datum != undefined ? colorScale(datum) : 'transparent';
+    let countyFeaturesFiltered = [];
+    if (isCounties) {
+      const _stateFips = String(Number(stateFips));
+      countyFeaturesFiltered = countyFeatures.filter((f) => {
+        const fips = String(f.id);
+        return _stateFips === fips.substring(0, fips.length === 4 ? 1 : 2);
       });
+    }
+    let stateFeaturesFiltered = isCounties
+      ? stateFeatures.filter((f) => f.id === Number(stateFips))
+      : stateFeatures;
 
-    const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
+    function fillColor(d) {
+      const fips = d.id;
+      const datum = byFips[fips];
+      return datum != undefined && datum !== 0 ? colorScale(datum) : mapNoDataColor;
+    }
+
+    $g.select('#map-states')
+      .selectAll('.map-state')
+      .data(stateFeaturesFiltered, (f) => f.id)
+      .join(
+        (enter) => enter.append('path').attr('opacity', 0).attr('class', 'map-state map-feat'),
+        (update) => update,
+        (exit) => {
+          exit.transition().duration(350).attr('opacity', 0).remove();
+        },
+      )
+      .attr('d', path)
+      .transition()
+      .duration(isFirstMapRender ? 0 : 350)
+      .attr('opacity', 1)
+      .attr('fill', isCounties ? mapNoDataColor : fillColor);
+
+    $g.select('#map-counties')
+      .selectAll('.map-county')
+      .data(countyFeaturesFiltered, (f) => f.id)
+      .join(
+        (enter) => enter.append('path').attr('opacity', 0).attr('class', 'map-county map-feat'),
+        (update) => update,
+        (exit) => {
+          exit.transition().duration(350).attr('opacity', 0).remove();
+        },
+      )
+      .attr('d', path)
+      .attr('fill', fillColor)
+      .transition()
+      .duration(isFirstMapRender ? 0 : 350)
+      .attr('opacity', 1);
+
+    $g.select('#map-state-borders')
+      .datum(stateBorders)
+      .attr('d', path)
+      .attr('opacity', isCounties ? 0 : 1);
+
+    // Zoom to the correct location (anaimated on subsequent renders)
+    const $gSel = isFirstMapRender ? $g : $g.transition().duration(750);
+    if (isCounties) {
+      const bounds = isCounties ? path.bounds(stateFeaturesFiltered[0]) : null;
+      const xWidth = bounds[1][0] - bounds[0][0];
+      const yHeight = bounds[1][1] - bounds[0][1];
+      const xCenter = (bounds[0][0] + bounds[1][0]) / 2;
+      const yCenter = (bounds[0][1] + bounds[1][1]) / 2;
+      const scale = 0.9 / Math.max(xWidth / mapWidth, yHeight / mapHeight);
+      const translate = [mapWidth / 2 - scale * xCenter, mapHeight / 2 - scale * yCenter];
+      $gSel.attr('transform', 'translate(' + translate + ')scale(' + scale + ')');
+    } else {
+      $gSel.attr('transform', 'translate(0)scale(1)');
+    }
+
+    isFirstMapRender = false;
   }
 
-  function renderMapLegend(clusters) {
+  function renderMapLegend(clusters, min) {
     const $legend = d3.select('#map-legend');
     $legend
       .selectAll('.map-legend-item')
-      .data([0].concat(clusters))
+      .data([0, min].concat(clusters))
       .join(
         (enter) => {
           const $item = enter.append('div').attr('class', 'map-legend-item');
-          $item.append('div').attr('class', 'map-legend-item-label');
+          $item.append('div').classed('map-legend-item-label', true);
           return $item;
         },
         (update) => update,
         (exit) => exit.remove(),
       )
       .each(function (d, i) {
-        $(this).css('background-color', mapColors[i]);
+        $(this).css('background-color', i === 0 ? mapNoDataColor : mapColors[i - 1]);
       })
       .select('.map-legend-item-label')
       .text((d) => formatMapLegendTick(d));
@@ -1129,18 +1187,22 @@
   function renderAllStates() {
     render({groups: stateData, overview: usData});
     $('.back-to-states').removeClass('shown');
-    $('.sub-geo-name').hide();
     hideTooltip();
   }
   function renderCounties(state) {
     const countiesForState = countyData[state];
 
     const overviewData = stateData.filter((s) => s.key === state);
+    const stateFips = overviewData ? overviewData[0].values[0].fips : null;
 
-    render({groups: countiesForState.counties, overview: overviewData, isCounties: true});
+    render({
+      groups: countiesForState.counties,
+      overview: overviewData,
+      isCounties: true,
+      stateFips,
+    });
 
     $('.back-to-states').addClass('shown');
-    $('.sub-geo-name').text(state).show();
     hideTooltip();
   }
 
@@ -1232,12 +1294,14 @@
     });
   }
 
+  const fetchStateDataPromise = fetchStateData();
   if (filters.state === 'all') {
-    fetchStateData().then(() => renderAllStates());
+    fetchStateDataPromise.then(() => renderAllStates());
     setTimeout(fetchCountyData, 200);
   } else {
-    fetchCountyData().then(() => renderCounties(filters.state));
-    setTimeout(fetchStateData, 200);
+    Promise.all([fetchStateDataPromise, fetchCountyData()]).then(() =>
+      renderCounties(filters.state),
+    );
   }
 
   attachEvents();

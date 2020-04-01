@@ -233,12 +233,13 @@ a:visited {
 #svg-overview {
   width: 100%;
   height: auto;
-  min-height: 250px;
+  min-height: 180px;
   max-height: 500px;
   /* border: 1px solid #ccc; */
 }
 #viz-map {
   position: relative;
+  margin-top: 30px;
 }
 @media (min-width: 768px) {
   #viz-top {
@@ -250,7 +251,7 @@ a:visited {
     height: 100%;
   }
   #viz-map {
-    margin-top: 30px;
+    margin-top: 0;
   }
 }
 #map-states {
@@ -266,16 +267,18 @@ a:visited {
   pointer-events: none;
 }
 .map-county {
-  stroke: var(--bg);
+  stroke: #000;
   stroke-opacity: 0.5;
-  stroke-width: 0.5px;
+  stroke-width: 0.1;
 }
 .map-county:hover,
 .map-state:hover {
   fill: orange;
 }
-.map-state {
+#svg-map {
+  overflow: hidden;
 }
+
 #map-legend {
   position: absolute;
   top: 0px;
@@ -291,6 +294,7 @@ a:visited {
   margin-right: 1px;
   position: relative;
 }
+
 .map-legend-item-label {
   line-height: 1;
   position: absolute;
@@ -299,6 +303,10 @@ a:visited {
   color: var(--textSub);
   font-size: 11px;
   padding-top: 2px;
+  white-space: nowrap;
+}
+.map-legend-item:first-child {
+  margin-right: 10px;
 }
 
 #grid {
@@ -437,13 +445,9 @@ body.touch #tooltip.shown {
   opacity: 0.8;
 }
 
-.sub-geo-name {
-  display: none;
-  margin: 0 20px 0;
-  font-size: 24px;
-}
 .back-to-states {
-  display: none;
+  opacity: 0;
+  pointer-events: none;
   cursor: pointer;
   color: var(--primary1);
   font-size: 16px;
@@ -451,6 +455,8 @@ body.touch #tooltip.shown {
 }
 .back-to-states.shown {
   display: inline-block;
+  opacity: 1;
+  pointer-events: all;
 }
 
 @media (max-width: 600px) {
