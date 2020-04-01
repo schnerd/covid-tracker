@@ -295,6 +295,22 @@ a:visited {
   flex-direction: row;
   align-items: center;
 }
+#map-no-data {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  transform: translateY(-50%);
+  color: var(--textSub);
+  font-size: 14px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+#map-no-data.shown {
+  opacity: 1;
+}
 .map-legend-item {
   width: 40px;
   height: 8px;

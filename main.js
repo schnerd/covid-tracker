@@ -672,6 +672,10 @@
       ? stateFeatures.filter((f) => f.id === Number(stateFips))
       : stateFeatures;
 
+    const hasMapData = Boolean(stateFeaturesFiltered.length);
+    d3.select('#map-no-data').classed('shown', !hasMapData);
+    d3.select('#viz-map-header').style('opacity', hasMapData ? 1 : 0);
+
     const joinedData = aggMapData(
       groups,
       isCounties ? countyFeaturesFiltered : stateFeaturesFiltered,
@@ -780,7 +784,7 @@
 
     // Zoom to the correct location (anaimated on subsequent renders)
     const $gSel = isFirstMapRender ? $g : $g.transition().duration(750);
-    if (isCounties) {
+    if (isCounties && stateFeaturesFiltered.length) {
       const bounds = isCounties ? path.bounds(stateFeaturesFiltered[0]) : null;
       const xWidth = bounds[1][0] - bounds[0][0];
       const yHeight = bounds[1][1] - bounds[0][1];
@@ -1178,16 +1182,24 @@
     const {value, field, evt, allowDrilldown, title, subtitle, fieldLabels} = options;
     tooltipValue = value;
     tooltipShown = true;
-    const offsetX = evt.pageX;
-    const offsetY = evt.pageY;
+    const pageX = evt.pageX;
+    const pageY = evt.pageY;
+    const clientY = evt.clientY;
     const pad = 10;
-    const css = {left: '', right: '', top: `${offsetY + pad}px`, bottom: ''};
+    const css = {left: '', right: '', top: '', bottom: ''};
     const winWidth = window.innerWidth;
+    const winHeight = window.innerHeight;
     // If it overflows right
-    if (offsetX + 250 > winWidth) {
-      css.right = `${winWidth - offsetX + pad}px`;
+    if (pageX + 250 > winWidth) {
+      css.right = `${winWidth - pageX + pad}px`;
     } else {
-      css.left = `${offsetX + pad}px`;
+      css.left = `${pageX + pad}px`;
+    }
+    if (clientY + 250 > winHeight) {
+      const bodyHeight = document.body.getBoundingClientRect().height;
+      css.bottom = `${bodyHeight - pageY + pad}px`;
+    } else {
+      css.top = `${pageY + pad}px`;
     }
 
     const hasPercents = isTestingData;
