@@ -497,7 +497,7 @@
     }
 
     const gridData = filterGridData(groups, datesToShow, !isCounties);
-    const overviewData = filterOverviewData(overview, datesToShow, false);
+    const overviewData = filterOverviewData(overview, datesToShow, true);
 
     const options = {
       field,
@@ -614,43 +614,39 @@
   }
 
   function renderOverview(data, options) {
-    const $svg = d3.select('#svg-overview');
-    renderCharts($svg, data, {
+    const $overview = d3.select('#svg-overview');
+    const {width, height} = $overview.node().getBoundingClientRect();
+
+    const $cell = $overview.select('g.cell');
+    $cell.selectAll('*').remove();
+
+    const useLarge = window.innerWidth >= 1024;
+    const yAxisWidth = useLarge ? 40 : 30;
+    const xAxisHeight = useLarge ? 20 : 14;
+    const marginRight = 16;
+    const chartWidth = width - yAxisWidth - marginRight;
+    const chartHeight = height - xAxisHeight;
+
+    $cell.attr('transform', `translate(${yAxisWidth}, 0)`);
+
+    renderCharts($overview, data, {
       ...options,
       allowDrilldown: false,
+      chartWidth,
+      chartHeight,
+      barPad: 3,
     });
   }
 
   function renderGrid(data, options) {
+    const {field, daysToShow} = options;
+
     const $svg = d3.select('#grid');
-    renderCharts($svg, data, {
-      ...options,
-      allowDrilldown: !options.isCounties,
-    });
-  }
-
-  function renderCharts($svg, data, options) {
-    const {field, daysToShow, datesToShow, allowDrilldown} = options;
-    const {extents} = data;
-
-    // Make sure we're starting fresh
+    // Make sure  we're starting fresh
     $svg.selectAll('*').remove();
-
-    const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
+    $svg.attr('class', filters.consistentY ? 'consistent-y' : '');
 
     const groups = data.groups.slice(0);
-
-    groups.forEach((g) => {
-      if (field.startsWith('new')) {
-        // For daily new cases / deaths, sort by the sum of the data currently being shown
-        g.sortVal = d3.sum(g.values, (v) => v[field]);
-      } else {
-        // Otherwise sort by the last shown cumulative value
-        const lastVal = _.findLast(g.values, (v) => v[field] != undefined);
-        g.sortVal = lastVal ? lastVal[field] : -1;
-      }
-    });
-    groups.sort((a, b) => b.sortVal - a.sortVal);
 
     const useLarge = window.innerWidth >= 1024;
     const chartAspectRatio = 2.15;
@@ -672,6 +668,75 @@
     const numRows = Math.ceil(numStates / numCols);
 
     const totalHeight = numRows * rowHeight;
+
+    const allowDrilldown = !options.isCounties;
+
+    groups.forEach((g) => {
+      if (field.startsWith('new')) {
+        // For daily new cases / deaths, sort by the sum of the data currently being shown
+        g.sortVal = d3.sum(g.values, (v) => v[field]);
+      } else {
+        // Otherwise sort by the last shown cumulative value
+        const lastVal = _.findLast(g.values, (v) => v[field] != undefined);
+        g.sortVal = lastVal ? lastVal[field] : -1;
+      }
+    });
+    groups.sort((a, b) => b.sortVal - a.sortVal);
+
+    // Create grid of rows and columns
+    const $rows = $svg
+      .attr('viewBox', [0, 0, winWidth, totalHeight])
+      .selectAll('g.row')
+      .data(d3.range(numRows))
+      .enter()
+      .append('g')
+      .attr('class', 'row')
+      .attr('transform', (row) => `translate(${yAxisWidth}, ${row * rowHeight})`);
+
+    // Add cells
+    $rows.each(function (row) {
+      const lastItemNumber = (row + 1) * numCols;
+      const numColsForRow = lastItemNumber > groups.length ? groups.length % numCols : numCols;
+      const range = d3.range(numColsForRow).map((i) => ({row, col: i}));
+      d3.select(this)
+        .selectAll('g.cell')
+        .data(range)
+        .enter()
+        .append('g')
+        .attr('class', 'cell')
+        .classed('cell-clickable', allowDrilldown && !isTestingData)
+        .attr('transform', (d) => `translate(${d.col * colWidth}, 0)`);
+    });
+
+    renderCharts(
+      $svg,
+      {
+        ...data,
+        groups,
+      },
+      {
+        ...options,
+        allowDrilldown,
+        chartWidth,
+        chartHeight,
+        barPad,
+      },
+    );
+  }
+
+  function renderCharts($svg, data, options) {
+    const {
+      field,
+      daysToShow,
+      datesToShow,
+      allowDrilldown,
+      chartWidth,
+      chartHeight,
+      barPad,
+    } = options;
+    const {groups, extents} = data;
+
+    const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
 
     const xScale = d3
       .scaleBand()
@@ -812,12 +877,12 @@
         if (value && (value !== tooltipValue || !tooltipShown)) {
           const chPos = Math.round(xScale(date) + barWidth / 2);
           $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
-          showTooltip(value, field, evt);
+          showTooltip(value, field, evt, allowDrilldown && !isTestingData);
         }
       }
 
       function onClick() {
-        if (!allowDrilldown) {
+        if (allowDrilldown) {
           setStateFilter(data.key);
         }
       }
@@ -849,7 +914,7 @@
       // Add label above other elements to make it clickable
       $cell
         .append('text')
-        .text(`${counter}. ${data.key}`)
+        .text(groups.length > 1 ? `${counter}. ${data.key}` : data.key)
         .attr('x', 6)
         .attr('y', 14)
         .attr('class', 'cell-label')
@@ -887,7 +952,7 @@
       .text(formatXDate(endDate));
   }
 
-  function showTooltip(value, field, evt) {
+  function showTooltip(value, field, evt, allowDrilldown) {
     tooltipValue = value;
     tooltipShown = true;
     const offsetX = evt.layerX || evt.offsetX;
@@ -953,13 +1018,13 @@
         	`;
     });
 
-    const drilldownMsg =
-      !value.county && !isTestingData
-        ? '<div class="tooltip-drill"><span class="click">Click</span><span class="tap">Tap</span><span> to see counties</span></div>'
-        : '';
+    const drilldownMsg = allowDrilldown
+      ? '<div class="tooltip-drill"><span class="click">Click</span><span class="tap">Tap</span><span> to see counties</span></div>'
+      : '';
 
     $('#tooltip')
       .addClass('shown')
+      .toggleClass('clickable', allowDrilldown)
       .css(css)
       .html(
         `<div><h4>${formatTooltipDate(value.date)}</h4>
@@ -1040,7 +1105,7 @@
       router.push({[filterKeys.time]: $(this).val()});
     });
     $('#tooltip').click(function () {
-      if (tooltipValue && !tooltipValue.county) {
+      if ($(this).is('.clickable') && tooltipValue) {
         setStateFilter(tooltipValue.state);
       }
     });

@@ -77,8 +77,10 @@ header h1 {
   }
 }
 .title-wrap {
+  display: flex;
   flex-direction: row;
   align-items: center;
+  text-decoration: none;
 }
 .virus-icon {
   width: 28px;
@@ -242,7 +244,13 @@ a:visited {
   #viz-top {
     display: flex;
     flex-direction: row;
-    align-items: center;
+    align-items: stretch;
+  }
+  #svg-overview {
+    height: 100%;
+  }
+  #viz-map {
+    margin-top: 30px;
   }
 }
 #map-states {
@@ -294,7 +302,7 @@ a:visited {
 }
 
 #grid {
-  margin-top: 10px;
+  margin-top: 30px;
 }
 
 .cell-clickable {
@@ -306,6 +314,9 @@ a:visited {
   fill: var(--text);
   opacity: 0.5;
   font-weight: bold;
+}
+#viz-overview .cell-label {
+  font-size: 20px;
 }
 .cell-label-nopop {
   text-anchor: middle;
@@ -357,11 +368,16 @@ a:visited {
   .cell-label {
     font-size: 16px;
   }
-  .tick text {
-    font-size: 12px;
-  }
+  .tick text,
   .x-tick {
     font-size: 12px;
+  }
+  #viz-overview .cell-label {
+    font-size: 24px;
+  }
+  #viz-overview .tick text,
+  #viz-overview .x-tick {
+    font-size: 14px;
   }
 }
 
