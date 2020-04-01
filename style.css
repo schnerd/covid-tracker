@@ -283,11 +283,14 @@ a:visited {
   overflow: hidden;
 }
 
+#viz-map-header {
+  align-items: center;
+}
+#map-title {
+  color: var(--textSub);
+  font-size: 14px;
+}
 #map-legend {
-  position: absolute;
-  top: 0px;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: row;
   align-items: center;

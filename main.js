@@ -30,6 +30,7 @@
   let lastCasesDate = null;
   let tooltipValue = null;
   let tooltipShown = null;
+  let tooltipHideTimer = null;
   let isTestingData = false;
 
   ///////////////
@@ -95,12 +96,12 @@
     per100k: 'per100k',
     consistentY: 'consistentY',
   };
+
   class Router {
     constructor(history) {
       this.history = history;
       history.listen(() => {
         // Update filter state variables and re-render
-        window.scrollTo(0, 0);
         this.parse();
         if (filters.state === 'all') {
           renderAllStates();
@@ -652,6 +653,10 @@
       .scale(mapWidth);
     const path = d3.geoPath().projection(projection);
 
+    const fieldTitle = mapDataPointLabels[field];
+    const timeTitle = timeLabels[filters.time];
+    d3.select('#map-title').text(`${fieldTitle}, ${timeTitle}`);
+
     const $g = $map.select('#map-g').attr('width', mapWidth).attr('height', mapHeight);
 
     let countyFeaturesFiltered = [];
@@ -756,7 +761,7 @@
           onMouseEnter(d);
         })
         .on('mouseleave', () => {
-          hideTooltip();
+          hideTooltipSoon();
         });
     } else {
       $features
@@ -769,7 +774,7 @@
         })
         .on('mouseenter', onMouseEnter)
         .on('mouseleave', () => {
-          hideTooltip();
+          hideTooltipSoon();
         });
     }
 
@@ -1082,6 +1087,7 @@
 
       function onClick() {
         if (allowDrilldown) {
+          window.scrollTo(0, 0);
           setStateFilter(data.key);
         }
       }
@@ -1168,6 +1174,7 @@
   }
 
   function showTooltip(options) {
+    clearTimeout(tooltipHideTimer);
     const {value, field, evt, allowDrilldown, title, subtitle, fieldLabels} = options;
     tooltipValue = value;
     tooltipShown = true;
@@ -1252,6 +1259,10 @@
       );
   }
 
+  // Sometimes we want to delay hiding to allow user to click into tooltip before it hides (i.e. on mobile)
+  function hideTooltipSoon() {
+    tooltipHideTimer = setTimeout(hideTooltip, 50);
+  }
   function hideTooltip() {
     $('#tooltip').removeClass('shown');
     tooltipShown = false;
@@ -1311,6 +1322,7 @@
     });
     $('.back-to-states').click(function () {
       setStateFilter('all');
+      window.scrollTo(0, 0);
     });
     $('#field-select').change(function () {
       router.push({
@@ -1323,7 +1335,11 @@
     });
     $('#tooltip').click(function () {
       if ($(this).is('.clickable') && tooltipValue) {
-        setStateFilter(tooltipValue.state);
+        setStateFilter(tooltipValue.state || tooltipValue.label);
+        // Scroll to top if this was a chart (not map) click
+        if (!tooltipValue.label) {
+          window.scrollTo(0, 0);
+        }
       }
     });
     $('#cb-use-log-scale').change(function () {
@@ -1339,7 +1355,7 @@
       router.push({[filterKeys.consistentY]: value ? '1' : '0'});
     });
     $(document).on('click', function () {
-      hideTooltip();
+      hideTooltipSoon();
     });
   }
 
