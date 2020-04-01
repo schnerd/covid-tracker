@@ -7,7 +7,11 @@
   // Data
   let stateData = null;
   let countyData = null;
+  let stateDataFiltered = null;
+  let countyDataFiltered = null;
   let curData = null;
+
+  // Map features
   let stateFeatures = null;
   let stateBorders = null;
   let countyFeatures = null;
@@ -23,6 +27,8 @@
   };
 
   // UI state
+  let firstCasesDate = new Date(2020, 0, 21);
+  let lastCasesDate = null;
   let tooltipValue = null;
   let tooltipShown = null;
   let isTestingData = false;
@@ -178,6 +184,22 @@
   // Data Processing //
   /////////////////////
 
+  function getValueKeys(withTesting) {
+    const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
+    if (withTesting) {
+      valueKeys.push(
+        'positive',
+        'negative',
+        'pending',
+        'tests',
+        'newPositive',
+        'newNegative',
+        'newTests',
+      );
+    }
+    return valueKeys;
+  }
+
   function processStates(csv, pop, testingCsv) {
     const nestedStates = d3
       .nest()
@@ -187,11 +209,7 @@
     const testingByFips = processTestingData(testingCsv);
 
     const popMap = processPopulations(pop);
-    const [states, extents] = processGroups(nestedStates, popMap, testingByFips);
-    return {
-      states,
-      extents,
-    };
+    return processGroups(nestedStates, popMap, testingByFips);
   }
 
   function processTestingData(csv) {
@@ -245,10 +263,8 @@
         .nest()
         .key((k) => k.county)
         .entries(state.values);
-      const [byCounty, extents] = processGroups(counties, popMap);
-      state.counties = byCounty;
-      state.extents = extents;
-      stateMap[state.key] = {key: state.key, counties, extents};
+      const byCounty = processGroups(counties, popMap);
+      stateMap[state.key] = {key: state.key, counties: byCounty};
     });
 
     return stateMap;
@@ -263,22 +279,7 @@
   }
 
   function processGroups(groups, popMap, testingMap) {
-    const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
-    if (testingMap) {
-      valueKeys.push(
-        'positive',
-        'negative',
-        'pending',
-        'tests',
-        'newPositive',
-        'newNegative',
-        'newTests',
-      );
-    }
-
-    const extents = {};
-    const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
-    extentKeys.forEach((key) => (extents[key] = [0, null]));
+    const valueKeys = getValueKeys(!!testingMap);
 
     groups.forEach((group) => {
       const newValues = [];
@@ -301,6 +302,7 @@
         }
         newValues.push(parsed);
 
+        // Add in testing data
         const testing = ((testingMap ? testingMap[parsed.fips] : {}) || {})[parsed.date.getTime()];
         if (testing) {
           parsed.positive = testing.positive;
@@ -331,20 +333,65 @@
           group.noPopulation = true;
         }
 
-        extentKeys.forEach((key) => {
-          if (parsed[key] != undefined && parsed[key] < extents[key][0]) {
-            extents[key][0] = parsed[key];
-          }
-          if (parsed[key] != undefined && parsed[key] > extents[key][1]) {
-            extents[key][1] = parsed[key];
-          }
-        });
+        if (lastCasesDate === null || parsed.date.getTime() > lastCasesDate.getTime()) {
+          lastCasesDate = parsed.date;
+        }
       }
       group.values = newValues;
     });
 
-    return [groups, extents];
+    return groups;
   }
+
+  const filterData = memoizeOne((data, datesToShow) => {
+    const {groups, isCounties} = data;
+    const valueKeys = getValueKeys(!isCounties);
+
+    const extents = {};
+    const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
+    extentKeys.forEach((key) => (extents[key] = [0, null]));
+
+    const newGroups = groups.map((g) => {
+      const {values} = g;
+      const newValues = [];
+      let valuesIndex = 0;
+
+      // Get the dates we care about
+      for (var i = 0; i < datesToShow.length; i++) {
+        while (
+          values[valuesIndex] &&
+          values[valuesIndex].date.getTime() < datesToShow[i].getTime()
+        ) {
+          valuesIndex++;
+        }
+        if (
+          values[valuesIndex] &&
+          values[valuesIndex].date.getTime() === datesToShow[i].getTime()
+        ) {
+          newValues.push({...values[valuesIndex], i});
+        }
+      }
+
+      // Update the extents object
+      newValues.forEach((value) => {
+        extentKeys.forEach((key) => {
+          if (value[key] != undefined && value[key] < extents[key][0]) {
+            extents[key][0] = value[key];
+          }
+          if (value[key] != undefined && value[key] > extents[key][1]) {
+            extents[key][1] = value[key];
+          }
+        });
+      });
+
+      return {
+        ...g,
+        values: newValues,
+      };
+    });
+
+    return {...data, groups: newGroups, extents};
+  });
 
   function per100kKey(key) {
     return `${key}_p100k`;
@@ -356,11 +403,8 @@
 
   let mapRenderCount = 0;
   function render(data) {
-    const {extents} = data;
     const field = filters.per100k ? per100kKey(filters.field) : filters.field;
 
-    const firstDate = extents.date[0];
-    const lastDate = extents.date[1];
     let daysToShow;
     if (filters.time === '7d') {
       daysToShow = 7;
@@ -369,14 +413,16 @@
     } else if (filters.time === '1mo') {
       daysToShow = 30;
     } else {
-      daysToShow = moment(lastDate).diff(moment(firstDate), 'days');
+      daysToShow = moment(lastCasesDate).diff(moment(firstCasesDate), 'days');
     }
-    const datesToShow = [lastDate];
+    const datesToShow = [lastCasesDate];
     for (let i = 1; i < daysToShow; i++) {
-      const nextDate = new Date(lastDate);
-      nextDate.setDate(lastDate.getDate() - i);
+      const nextDate = new Date(lastCasesDate);
+      nextDate.setDate(lastCasesDate.getDate() - i);
       datesToShow.unshift(nextDate);
     }
+
+    const filteredData = filterData(data, datesToShow);
 
     const options = {
       field,
@@ -384,14 +430,14 @@
       datesToShow,
     };
 
-    renderDetail(data, options);
-    renderGrid(data, options);
+    renderDetail(filteredData, options);
+    renderGrid(filteredData, options);
 
     // Render Map (only the last invokation)
     const _mapRenderCount = ++mapRenderCount;
     fetchMapData().then(() => {
       if (_mapRenderCount === mapRenderCount) {
-        renderMap(data, options);
+        renderMap(filteredData, options);
       }
     });
   }
@@ -430,24 +476,17 @@
       .scale(width);
     const path = d3.geoPath().projection(projection);
 
-    const $g = $map
-      .append('g')
-      .attr('class', 'map-g')
-      .attr('transform', 'translate(0, 0)')
-      .attr('width', width)
-      .attr('height', height);
+    const $g = $map.select('#map-g').attr('width', width).attr('height', height);
 
     const $counties = $g
-      .append('g')
-      .attr('id', 'map-counties')
+      .select('#map-counties')
       .selectAll('path')
       .data(countyFeatures)
       .join((enter) => enter.append('path').attr('class', 'map-county map-feat'))
       .attr('d', path);
 
     const $states = $g
-      .append('g')
-      .attr('id', 'map-states')
+      .select('#map-states')
       .selectAll('path')
       .data(stateFeatures)
       .join((enter) => enter.append('path').attr('class', 'map-state map-feat'))
@@ -458,11 +497,7 @@
         return datum != undefined ? colorScale(datum) : 'transparent';
       });
 
-    const $borders = $g
-      .append('path')
-      .datum(stateBorders)
-      .attr('id', 'map-state-borders')
-      .attr('d', path);
+    const $borders = $g.select('#map-state-borders').datum(stateBorders).attr('d', path);
   }
 
   function renderDetail(data, options) {}
@@ -523,14 +558,14 @@
 
     const xScale = d3
       .scaleBand()
-      .domain(d3.range(daysToShow))
+      .domain(datesToShow)
       .rangeRound([0, chartWidth])
       .paddingInner((barPad * daysToShow) / chartWidth)
       .paddingOuter((barPad * 5) / chartWidth);
     const barWidth = xScale.bandwidth();
 
-    const barXMidpoints = datesToShow.map((d, i) => {
-      return xScale(i) + barWidth / 2;
+    const barXMidpoints = datesToShow.map((d) => {
+      return xScale(d) + barWidth / 2;
     });
 
     function makeYScale(extent) {
@@ -624,24 +659,6 @@
 
       $cell.append('g').attr('transform', 'translate(0,0)').call(cellYAxis);
 
-      // Make sure we show all dates in proper locations (even if group has data missing at that date)
-      const shownValues = [];
-      let valuesIndex = 0;
-      for (var i = 0; i < datesToShow.length; i++) {
-        while (
-          values[valuesIndex] &&
-          values[valuesIndex].date.getTime() < datesToShow[i].getTime()
-        ) {
-          valuesIndex++;
-        }
-        if (
-          values[valuesIndex] &&
-          values[valuesIndex].date.getTime() === datesToShow[i].getTime()
-        ) {
-          shownValues.push({...values[valuesIndex], i});
-        }
-      }
-
       let stackFields;
       if (isTestingData) {
         stackFields =
@@ -653,7 +670,7 @@
         stackFields = [field];
       }
 
-      const stack = d3.stack().keys(stackFields)(shownValues);
+      const stack = d3.stack().keys(stackFields)(values);
       const $layers = $cell
         .selectAll('g.layer')
         .data(stack, (d) => d.key)
@@ -673,7 +690,7 @@
         .append('rect')
         .attr('class', 'bar')
         .attr('width', barWidth)
-        .attr('x', (d) => xScale(d.data.i))
+        .attr('x', (d) => xScale(d.data.date))
         .attr('y', (d) => {
           const y = Math.floor(cellYScale(d[1]));
           return Number.isNaN(y) ? chartHeight : y;
@@ -701,9 +718,9 @@
             ? bisectIndex
             : bisectIndex - 1;
         const date = datesToShow[index];
-        const value = shownValues.find((v) => v.date.getTime() === date.getTime());
+        const value = values.find((v) => v.date.getTime() === date.getTime());
         if (value && (value !== tooltipValue || !tooltipShown)) {
-          const chPos = Math.round(xScale(index) + barWidth / 2);
+          const chPos = Math.round(xScale(date) + barWidth / 2);
           $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
           showTooltip(value, field, evt);
         }
@@ -941,7 +958,7 @@
   }
 
   function renderAllStates() {
-    curData = {groups: stateData.states, extents: stateData.extents};
+    curData = {groups: stateData};
     render(curData);
     $('.back-to-states').removeClass('shown');
     $('.sub-geo-name').hide();
@@ -949,7 +966,7 @@
   }
   function renderCounties(state) {
     const stateData = countyData[state];
-    curData = {groups: stateData.counties, extents: stateData.extents, isCounties: true};
+    curData = {groups: stateData.counties, isCounties: true};
     render(curData);
     $('.back-to-states').addClass('shown');
     $('.sub-geo-name').text(state).show();
@@ -986,7 +1003,8 @@
       stateData = processStates(csv, statePop, testingData);
 
       // Populate state select
-      const stateOptions = stateData.states
+      const stateOptions = stateData
+        .slice(0)
         .sort((a, b) => a.key.localeCompare(b.key))
         .map((s) => `<option value="${s.key}">${s.key}</option>`)
         .join('');
@@ -1004,6 +1022,43 @@
     ]).then(([csv, countyPop]) => {
       countyData = processCounties(csv, countyPop);
     });
+  }
+
+  function areInputsEqual(newInputs, lastInputs) {
+    if (newInputs.length !== lastInputs.length) {
+      return false;
+    }
+    for (var i = 0; i < newInputs.length; i++) {
+      if (newInputs[i] !== lastInputs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function memoizeOne(resultFn, isEqual) {
+    if (isEqual === void 0) {
+      isEqual = areInputsEqual;
+    }
+    var lastThis;
+    var lastArgs = [];
+    var lastResult;
+    var calledOnce = false;
+    function memoized() {
+      var newArgs = [];
+      for (var _i = 0; _i < arguments.length; _i++) {
+        newArgs[_i] = arguments[_i];
+      }
+      if (calledOnce && lastThis === this && isEqual(newArgs, lastArgs)) {
+        return lastResult;
+      }
+      lastResult = resultFn.apply(this, newArgs);
+      calledOnce = true;
+      lastThis = this;
+      lastArgs = newArgs;
+      return lastResult;
+    }
+    return memoized;
   }
 
   if (filters.state === 'all') {

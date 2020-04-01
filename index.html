@@ -132,7 +132,13 @@
       <div id="viz">
         <div id="viz-top">
           <svg id="detail" width="100" height="50"></svg>
-          <svg id="map" width="100" height="50"></svg>
+          <svg id="map" width="100" height="50">
+            <g id="map-g">
+              <g id="map-counties"></g>
+              <g id="map-states"></g>
+              <path id="map-state-borders"></path>
+            </g>
+          </svg>
         </div>
         <svg id="grid"></svg>
         <div id="tooltip"></div>
