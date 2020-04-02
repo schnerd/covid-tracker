@@ -995,7 +995,7 @@
     function makeYScale(extent) {
       const domain = [0, Math.max(extent[1], filters.per100k ? 0.1 : 10)];
       if (filters.useLog) {
-        const extentMin = extent[0] || (filters.per100k ? 0.01 : 1);
+        const extentMin = Math.max(extent[0], 0) || (filters.per100k ? 0.01 : 1);
         // Make sure domain start is small enough such that even really small numbers show a bar
         domain[0] = 1;
         while (domain[0] >= extentMin) {
