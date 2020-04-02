@@ -1285,9 +1285,13 @@
     }
     const dataPointEl = dataPoints.map((dp) => {
       const format = dp.formatter || formatTooltipValue;
+      const dpValue = value[dp.key];
+      if (dpValue == undefined) {
+        return '';
+      }
       return `
         	<div class="tooltip-dp-label ${dp.color || ''}">${fieldLabels[dp.key]}</div>
-        	<div class="tooltip-dp-val">${format(value[dp.key])}${dp.suffix || ''}</div>
+        	<div class="tooltip-dp-val">${format(dpValue)}${dp.suffix || ''}</div>
           ${
             hasPercents
               ? `
