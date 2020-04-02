@@ -49,6 +49,7 @@
     newTests: 'New Tests',
     newPositive: 'New Positive',
     newNegative: 'New Negative',
+    pop: 'Est. Population',
   };
   Object.keys(dataPointLabels).forEach((k) => {
     dataPointLabels[per100kKey(k)] = dataPointLabels[k];
@@ -69,10 +70,18 @@
     all: 'All-time',
   };
 
+  const KANSAS_CITY_FAKE_FIPS = '29999';
+
   // https://github.com/nytimes/covid-19-data#geographic-exceptions
   const countyLabelToFips = {
     'New York City': '36061',
+    'Kansas City': KANSAS_CITY_FAKE_FIPS,
   };
+
+  const populationOverrides = {
+    [KANSAS_CITY_FAKE_FIPS]: 491918,
+  };
+
   const fipsRemapping = {
     // Bronx -> NY
     '36005': '36061',
@@ -377,7 +386,7 @@
   }
 
   function processPopulations(pop) {
-    const map = {};
+    const map = Object.assign({}, populationOverrides);
     pop.forEach((p) => {
       // Normally there would be one population value per fips code,
       // however there are geographic exceptions in our source file
@@ -1265,14 +1274,20 @@
       dataPoints = dataPoints.map((dp) => ({
         ...dp,
         key: per100kKey(dp.key),
+        suffix: ' per 100k',
+        formatter: formatPer100kValue,
       }));
+      if (value.pop != undefined) {
+        dataPoints.push({
+          key: 'pop',
+        });
+      }
     }
     const dataPointEl = dataPoints.map((dp) => {
+      const format = dp.formatter || formatTooltipValue;
       return `
         	<div class="tooltip-dp-label ${dp.color || ''}">${fieldLabels[dp.key]}</div>
-        	<div class="tooltip-dp-val">${formatTooltipValue(value[dp.key])}${
-        filters.per100k ? ' per 100k' : ''
-      }</div>
+        	<div class="tooltip-dp-val">${format(value[dp.key])}${dp.suffix || ''}</div>
           ${
             hasPercents
               ? `
@@ -1341,10 +1356,14 @@
     return abbrev ? `${n}${abbrev}` : String(n);
   }
 
-  const tooltipFmt = d3.format(',d');
   const tooltipFmtPer100k = d3.format(',.1f');
+  function formatPer100kValue(n) {
+    return tooltipFmtPer100k(n);
+  }
+
+  const tooltipFmt = d3.format(',d');
   function formatTooltipValue(n) {
-    return filters.per100k ? tooltipFmtPer100k(n) : tooltipFmt(n);
+    return tooltipFmt(n);
   }
 
   function formatMapLegendTick(n) {
