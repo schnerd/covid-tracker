@@ -603,6 +603,7 @@
       // Just aggregate the number of new cases/etc across the selected time range
       let value = {
         fips,
+        pop,
         label: group.key,
         // New cases/deaths over last N days
         cases: d3.sum(values, (v) => v.newCases),
