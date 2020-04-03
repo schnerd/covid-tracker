@@ -1,7 +1,4 @@
 (function () {
-  if (window.isIE) {
-    return;
-  }
   const isTouchDevice = 'ontouchstart' in document.documentElement;
   if (isTouchDevice) {
     $(document.body).addClass('touch');

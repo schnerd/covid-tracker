@@ -160,16 +160,7 @@
     </div>
     <script src="https://d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
     <script>
-      // Setup bugsnag
       window.bugsnagClient = bugsnag('b84fcf0d4140c6fbfaa590be4099f814');
-
-      // Disable IE
-      var ua = window.navigator.userAgent;
-      var isIE = /MSIE|Trident/.test(ua);
-      if (isIE) {
-        document.querySelector('#viz').innerHTML =
-          '<div class="ie-warning">Internet Explorer is not supported, please use a modern browser</div>';
-      }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/d3@5.15.0/dist/d3.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.min.js"></script>
