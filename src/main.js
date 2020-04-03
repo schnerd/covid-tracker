@@ -1,3 +1,13 @@
+import * as d3 from 'd3';
+import scaleCluster from 'd3-scale-cluster';
+import memoizeOne from 'memoize-one';
+import throttle from 'lodash/throttle';
+import findLast from 'lodash/findLast';
+import moment from 'moment';
+import $ from 'jquery';
+import * as history from 'history';
+import * as topojson from 'topojson';
+
 (function () {
   const isTouchDevice = 'ontouchstart' in document.documentElement;
   if (isTouchDevice) {
@@ -115,9 +125,9 @@
   };
 
   class Router {
-    constructor(history) {
-      this.history = history;
-      history.listen(() => {
+    constructor(hist) {
+      this.history = hist;
+      this.history.listen(() => {
         // Update filter state variables and re-render
         this.parse();
         if (filters.state === 'all') {
@@ -231,7 +241,7 @@
       .join('&');
     return result ? `?${result}` : '';
   }
-  const router = new Router(window.History.createBrowserHistory());
+  const router = new Router(history.createBrowserHistory());
   router.parse();
 
   /////////////////////
@@ -248,7 +258,7 @@
         'tests',
         'newPositive',
         'newNegative',
-        'newTests'
+        'newTests',
       );
     }
     return valueKeys;
@@ -704,7 +714,7 @@
 
     const joinedData = aggMapData(
       groups,
-      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered
+      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered,
     );
 
     const domain = [];
@@ -718,7 +728,7 @@
       domain.push(1);
     }
     const min = d3.min(domain);
-    const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
+    const colorScale = scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
     renderMapLegend(clusters, min);
 
@@ -736,7 +746,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        }
+        },
       );
 
     $states
@@ -759,7 +769,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        }
+        },
       )
       .attr('d', (d) => path(d.feature))
       .attr('fill', fillColor);
@@ -846,7 +856,7 @@
           return $item;
         },
         (update) => update,
-        (exit) => exit.remove()
+        (exit) => exit.remove(),
       )
       .each(function (d, i) {
         $(this).css('background-color', i === 0 ? mapNoDataColor : mapColors[i - 1]);
@@ -919,7 +929,7 @@
         g.sortVal = d3.sum(g.values, (v) => v[field]);
       } else {
         // Otherwise sort by the last shown cumulative value
-        const lastVal = _.findLast(g.values, (v) => v[field] != undefined);
+        const lastVal = findLast(g.values, (v) => v[field] != undefined);
         g.sortVal = lastVal ? lastVal[field] : -1;
       }
     });
@@ -962,7 +972,7 @@
         chartWidth,
         chartHeight,
         barPad,
-      }
+      },
     );
   }
 
@@ -1089,7 +1099,7 @@
         .selectAll('.bar')
         .data(
           (l) => l,
-          (d) => String(d.data.date.getTime())
+          (d) => String(d.data.date.getTime()),
         )
         .enter()
         .append('rect')
@@ -1319,7 +1329,7 @@
               <div class="tooltip-grid ${columnClass}">
                 ${dataPointEl.join('')}
               </div>
-              ${drilldownMsg}</div>`
+              ${drilldownMsg}</div>`,
       );
   }
 
@@ -1449,44 +1459,7 @@
     hideTooltip();
   }
 
-  function areInputsEqual(newInputs, lastInputs) {
-    if (newInputs.length !== lastInputs.length) {
-      return false;
-    }
-    for (var i = 0; i < newInputs.length; i++) {
-      if (newInputs[i] !== lastInputs[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function memoizeOne(resultFn, isEqual) {
-    if (isEqual === void 0) {
-      isEqual = areInputsEqual;
-    }
-    var lastThis;
-    var lastArgs = [];
-    var lastResult;
-    var calledOnce = false;
-    function memoized() {
-      var newArgs = [];
-      for (var _i = 0; _i < arguments.length; _i++) {
-        newArgs[_i] = arguments[_i];
-      }
-      if (calledOnce && lastThis === this && isEqual(newArgs, lastArgs)) {
-        return lastResult;
-      }
-      lastResult = resultFn.apply(this, newArgs);
-      calledOnce = true;
-      lastThis = this;
-      lastArgs = newArgs;
-      return lastResult;
-    }
-    return memoized;
-  }
-
-  const resizeWindow = _.throttle(() => {
+  const resizeWindow = throttle(() => {
     if (lastData) {
       render(lastData);
     }
@@ -1499,9 +1472,9 @@
       mapDataPromise = d3
         .json('https://raw.githubusercontent.com/schnerd/covid-tracker/master/us-counties.topojson')
         .then((us) => {
-          stateFeatures = window.topojson.feature(us, us.objects.states).features;
-          stateBorders = window.topojson.mesh(us, us.objects.states, (a, b) => a !== b);
-          countyFeatures = window.topojson.feature(us, us.objects.counties).features;
+          stateFeatures = topojson.feature(us, us.objects.states).features;
+          stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+          countyFeatures = topojson.feature(us, us.objects.counties).features;
         });
     }
     return mapDataPromise;
@@ -1543,7 +1516,7 @@
     setTimeout(fetchCountyData, 200);
   } else {
     Promise.all([fetchStateDataPromise, fetchCountyData()]).then(() =>
-      renderCounties(filters.state)
+      renderCounties(filters.state),
     );
   }
 

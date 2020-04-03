@@ -7,7 +7,6 @@ module.exports = {
   globals: {
     Atomics: 'readonly',
     SharedArrayBuffer: 'readonly',
-    d3: 'readonly',
     _: 'readonly',
     moment: 'readonly',
     $: 'readonly',
