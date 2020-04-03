@@ -7,7 +7,6 @@ module.exports = {
   entry: './src/main.js',
   output: {
     path: __dirname,
-    filename: 'main.bundle.js',
   },
   mode: 'production',
   module: {
@@ -22,10 +21,21 @@ module.exports = {
     new HtmlWebpackPlugin({
       filename: 'index.html',
       template: 'src/index.html',
+      inject: false,
     }),
     new CopyPlugin([{from: 'src/style.css', to: 'style.css'}]),
   ],
   optimization: {
+    moduleIds: 'hashed',
     minimizer: [new UglifyJsPlugin()],
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          test: /[\\/]node_modules[\\/]/,
+          chunks: 'all',
+          name: 'vendor',
+        },
+      },
+    },
   },
 };

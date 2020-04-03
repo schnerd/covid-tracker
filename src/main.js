@@ -3,10 +3,9 @@ import scaleCluster from 'd3-scale-cluster';
 import memoizeOne from 'memoize-one';
 import throttle from 'lodash/throttle';
 import findLast from 'lodash/findLast';
-import moment from 'moment';
 import $ from 'jquery';
 import * as history from 'history';
-import * as topojson from 'topojson';
+import * as topojson from 'topojson-client';
 
 (function () {
   const isTouchDevice = 'ontouchstart' in document.documentElement;
@@ -559,7 +558,7 @@ import * as topojson from 'topojson';
     } else if (filters.time === '1mo') {
       daysToShow = 30;
     } else {
-      daysToShow = moment(lastCasesDate).diff(moment(firstCasesDate), 'days');
+      daysToShow = dateDiffInDays(lastCasesDate, firstCasesDate);
     }
     const datesToShow = [lastCasesDate];
     for (let i = 1; i < daysToShow; i++) {
@@ -1218,6 +1217,13 @@ import * as topojson from 'topojson';
       subtitle: timeLabels[filters.time],
       fieldLabels: mapDataPointLabels,
     });
+  }
+
+  const _MS_PER_DAY = 1000 * 60 * 60 * 24;
+  function dateDiffInDays(a, b) {
+    const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.floor((utc2 - utc1) / _MS_PER_DAY);
   }
 
   function showChartTooltip(options) {

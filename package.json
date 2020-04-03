@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "lint": "eslint src",
-    "watch": "webpack --watch",
+    "watch": "webpack-dev-server --open",
     "build": "webpack"
   },
   "dependencies": {
@@ -17,9 +17,8 @@
     "jquery": "^3.4.1",
     "lodash": "^4.17.15",
     "memoize-one": "^5.1.1",
-    "moment": "^2.24.0",
     "prettier": "^2.0.2",
-    "topojson": "^3.0.2"
+    "topojson-client": "^3.1.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.8.4",
@@ -31,6 +30,7 @@
     "html-webpack-plugin": "^4.0.4",
     "uglifyjs-webpack-plugin": "^2.2.0",
     "webpack": "^4.42.1",
-    "webpack-cli": "^3.3.11"
+    "webpack-cli": "^3.3.11",
+    "webpack-dev-server": "^3.10.3"
   }
 }

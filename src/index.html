@@ -162,7 +162,10 @@
     <script>
       window.bugsnagClient = bugsnag('b84fcf0d4140c6fbfaa590be4099f814');
     </script>
-    <script src="<%= htmlWebpackPlugin.files.js[0] %>"></script>
+    <% _.forEach(htmlWebpackPlugin.files.js, function(file) { %>
+    <script src="<%- file %>"></script>
+    <% }); %>
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=UA-162036100-1"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
