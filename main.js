@@ -248,7 +248,7 @@
         'tests',
         'newPositive',
         'newNegative',
-        'newTests',
+        'newTests'
       );
     }
     return valueKeys;
@@ -704,7 +704,7 @@
 
     const joinedData = aggMapData(
       groups,
-      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered,
+      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered
     );
 
     const domain = [];
@@ -736,7 +736,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        },
+        }
       );
 
     $states
@@ -759,7 +759,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        },
+        }
       )
       .attr('d', (d) => path(d.feature))
       .attr('fill', fillColor);
@@ -846,7 +846,7 @@
           return $item;
         },
         (update) => update,
-        (exit) => exit.remove(),
+        (exit) => exit.remove()
       )
       .each(function (d, i) {
         $(this).css('background-color', i === 0 ? mapNoDataColor : mapColors[i - 1]);
@@ -962,7 +962,7 @@
         chartWidth,
         chartHeight,
         barPad,
-      },
+      }
     );
   }
 
@@ -1089,7 +1089,7 @@
         .selectAll('.bar')
         .data(
           (l) => l,
-          (d) => String(d.data.date.getTime()),
+          (d) => String(d.data.date.getTime())
         )
         .enter()
         .append('rect')
@@ -1319,7 +1319,7 @@
               <div class="tooltip-grid ${columnClass}">
                 ${dataPointEl.join('')}
               </div>
-              ${drilldownMsg}</div>`,
+              ${drilldownMsg}</div>`
       );
   }
 
@@ -1543,7 +1543,7 @@
     setTimeout(fetchCountyData, 200);
   } else {
     Promise.all([fetchStateDataPromise, fetchCountyData()]).then(() =>
-      renderCounties(filters.state),
+      renderCounties(filters.state)
     );
   }
 
