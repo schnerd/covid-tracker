@@ -539,6 +539,12 @@ body.touch #tooltip.shown {
   }
 }
 
+.ie-warning {
+  margin: 10px 20px;
+  font-size: 16px;
+  color: #e74c3c;
+}
+
 .primary1 {
   color: var(--primary1);
 }
