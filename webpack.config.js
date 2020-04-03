@@ -1,11 +1,13 @@
 /* eslint-env node */
 const path = require('path');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const CopyPlugin = require('copy-webpack-plugin');
 
 module.exports = {
-  entry: './main.js',
+  entry: './src/main.js',
   output: {
-    path: path.resolve(__dirname, 'dist'),
+    path: __dirname,
     filename: 'main.bundle.js',
   },
   mode: 'production',
@@ -17,6 +19,13 @@ module.exports = {
       },
     ],
   },
+  plugins: [
+    new HtmlWebpackPlugin({
+      filename: 'index.html',
+      template: 'src/index.html',
+    }),
+    new CopyPlugin([{from: 'src/style.css', to: 'style.css'}]),
+  ],
   optimization: {
     minimizer: [new UglifyJsPlugin()],
   },
