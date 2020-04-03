@@ -1,3 +1,13 @@
+import * as d3 from 'd3';
+import scaleCluster from 'd3-scale-cluster';
+import memoizeOne from 'memoize-one';
+import throttle from 'lodash/throttle';
+import findLast from 'lodash/findLast';
+import $ from 'jquery';
+import * as history from 'history';
+import * as topojson from 'topojson-client';
+import './style.css';
+
 (function () {
   const isTouchDevice = 'ontouchstart' in document.documentElement;
   if (isTouchDevice) {
@@ -115,9 +125,9 @@
   };
 
   class Router {
-    constructor(history) {
-      this.history = history;
-      history.listen(() => {
+    constructor(hist) {
+      this.history = hist;
+      this.history.listen(() => {
         // Update filter state variables and re-render
         this.parse();
         if (filters.state === 'all') {
@@ -231,7 +241,7 @@
       .join('&');
     return result ? `?${result}` : '';
   }
-  const router = new Router(window.History.createBrowserHistory());
+  const router = new Router(history.createBrowserHistory());
   router.parse();
 
   /////////////////////
@@ -549,7 +559,7 @@
     } else if (filters.time === '1mo') {
       daysToShow = 30;
     } else {
-      daysToShow = moment(lastCasesDate).diff(moment(firstCasesDate), 'days');
+      daysToShow = dateDiffInDays(lastCasesDate, firstCasesDate);
     }
     const datesToShow = [lastCasesDate];
     for (let i = 1; i < daysToShow; i++) {
@@ -718,7 +728,7 @@
       domain.push(1);
     }
     const min = d3.min(domain);
-    const colorScale = d3.scaleCluster().domain(domain).range(mapColors);
+    const colorScale = scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
     renderMapLegend(clusters, min);
 
@@ -919,7 +929,7 @@
         g.sortVal = d3.sum(g.values, (v) => v[field]);
       } else {
         // Otherwise sort by the last shown cumulative value
-        const lastVal = _.findLast(g.values, (v) => v[field] != undefined);
+        const lastVal = findLast(g.values, (v) => v[field] != undefined);
         g.sortVal = lastVal ? lastVal[field] : -1;
       }
     });
@@ -1210,6 +1220,13 @@
     });
   }
 
+  const _MS_PER_DAY = 1000 * 60 * 60 * 24;
+  function dateDiffInDays(a, b) {
+    const utc1 = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    const utc2 = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.floor((utc2 - utc1) / _MS_PER_DAY);
+  }
+
   function showChartTooltip(options) {
     const {value} = options;
     showTooltip({
@@ -1449,44 +1466,7 @@
     hideTooltip();
   }
 
-  function areInputsEqual(newInputs, lastInputs) {
-    if (newInputs.length !== lastInputs.length) {
-      return false;
-    }
-    for (var i = 0; i < newInputs.length; i++) {
-      if (newInputs[i] !== lastInputs[i]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  function memoizeOne(resultFn, isEqual) {
-    if (isEqual === void 0) {
-      isEqual = areInputsEqual;
-    }
-    var lastThis;
-    var lastArgs = [];
-    var lastResult;
-    var calledOnce = false;
-    function memoized() {
-      var newArgs = [];
-      for (var _i = 0; _i < arguments.length; _i++) {
-        newArgs[_i] = arguments[_i];
-      }
-      if (calledOnce && lastThis === this && isEqual(newArgs, lastArgs)) {
-        return lastResult;
-      }
-      lastResult = resultFn.apply(this, newArgs);
-      calledOnce = true;
-      lastThis = this;
-      lastArgs = newArgs;
-      return lastResult;
-    }
-    return memoized;
-  }
-
-  const resizeWindow = _.throttle(() => {
+  const resizeWindow = throttle(() => {
     if (lastData) {
       render(lastData);
     }
@@ -1499,9 +1479,9 @@
       mapDataPromise = d3
         .json('https://raw.githubusercontent.com/schnerd/covid-tracker/master/us-counties.topojson')
         .then((us) => {
-          stateFeatures = window.topojson.feature(us, us.objects.states).features;
-          stateBorders = window.topojson.mesh(us, us.objects.states, (a, b) => a !== b);
-          countyFeatures = window.topojson.feature(us, us.objects.counties).features;
+          stateFeatures = topojson.feature(us, us.objects.states).features;
+          stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+          countyFeatures = topojson.feature(us, us.objects.counties).features;
         });
     }
     return mapDataPromise;
@@ -1510,7 +1490,7 @@
   function fetchStateData() {
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
-      d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-sta.csv'),
+      d3.csv('assets/fips-pop-sta.csv'),
       d3.json('https://covidtracking.com/api/states/daily'),
     ]).then(([csv, statePop, testingData]) => {
       processStates(csv, statePop, testingData);
@@ -1531,7 +1511,7 @@
   function fetchCountyData() {
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
-      d3.csv('https://raw.githubusercontent.com/schnerd/covid-tracker/master/fips-pop-cty.csv'),
+      d3.csv('assets/fips-pop-cty.csv'),
     ]).then(([csv, countyPop]) => {
       processCounties(csv, countyPop);
     });
