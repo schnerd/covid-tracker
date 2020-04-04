@@ -1358,7 +1358,8 @@ import './style.css';
 
   // Sometimes we want to delay hiding to allow user to click into tooltip before it hides (i.e. on mobile)
   function hideTooltipSoon() {
-    tooltipHideTimer = setTimeout(hideTooltip, 50);
+    // Long delay needed for iOS safari, otherwise tooltip hides
+    tooltipHideTimer = setTimeout(hideTooltip, isTouchDevice ? 500 : 50);
   }
   function hideTooltip() {
     $('#tooltip').removeClass('shown');
@@ -1442,7 +1443,9 @@ import './style.css';
     $('#time-select').change(function () {
       router.push({[filterKeys.time]: $(this).val()});
     });
-    $('#tooltip').click(function () {
+    $('#tooltip').click(function (evt) {
+      // Dont let this bubble up to the document.click hide event
+      evt.stopPropagation();
       if ($(this).is('.clickable') && tooltipValue) {
         setStateFilter(tooltipValue.state || tooltipValue.label);
         // Scroll to top if this was a chart (not map) click
