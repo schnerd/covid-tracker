@@ -155,6 +155,8 @@ import './style.css';
         }
         switch (k) {
           case 'state': {
+            // Somehow URLs with plus instead of space are being used
+            v = v.replace('+', ' ');
             filters.state = v;
             $('#state-select').val(v);
             break;
