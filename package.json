@@ -4,9 +4,6 @@
   "main": "index.js",
   "author": "David Schnurr <schnurr@gmail.com>",
   "license": "MIT",
-  "scripts": {
-    "lint": "eslint main.js"
-  },
   "dependencies": {
     "prettier": "^2.0.2"
   },

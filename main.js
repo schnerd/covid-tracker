@@ -1,5 +1,4 @@
 (function () {
-  'use strict';
   const isTouchDevice = 'ontouchstart' in document.documentElement;
   if (isTouchDevice) {
     $(document.body).addClass('touch');
@@ -57,7 +56,7 @@
   });
 
   // On the map, "daily new" fields are averages
-  const mapDataPointLabels = Object.assign({}, dataPointLabels);
+  const mapDataPointLabels = {...dataPointLabels};
   Object.keys(mapDataPointLabels).forEach((key) => {
     if (key.startsWith('new')) {
       mapDataPointLabels[key] = `Avg ${mapDataPointLabels[key].replace('New', 'Daily')}`;
@@ -204,7 +203,10 @@
     }
 
     _update(action, obj) {
-      const query = Object.assign({}, parseQs(this.history.location.search), obj);
+      const query = {
+        ...parseQs(this.history.location.search),
+        ...obj,
+      };
       this.history[action]({
         search: stringifyQs(query),
       });
@@ -246,7 +248,7 @@
         'tests',
         'newPositive',
         'newNegative',
-        'newTests'
+        'newTests',
       );
     }
     return valueKeys;
@@ -414,12 +416,13 @@
           fips = countyLabelToFips[row.county];
         }
 
-        const parsed = Object.assign({}, row, {
+        const parsed = {
+          ...row,
           fips,
           date: new Date(Number(year), Number(month) - 1, Number(date)),
           cases: Number(row.cases),
           deaths: Number(row.deaths),
-        });
+        };
         if (prevRow) {
           parsed.newCases = parsed.cases - prevRow.cases;
           parsed.newDeaths = parsed.deaths - prevRow.deaths;
@@ -494,7 +497,7 @@
           values[valuesIndex] &&
           values[valuesIndex].date.getTime() === datesToShow[i].getTime()
         ) {
-          newValues.push(Object.assign({i}, values[valuesIndex]));
+          newValues.push({...values[valuesIndex], i});
         }
       }
 
@@ -511,9 +514,10 @@
         });
       });
 
-      return Object.assign({}, g, {
+      return {
+        ...g,
         values: newValues,
-      });
+      };
     });
 
     return {groups: newGroups, extents};
@@ -637,14 +641,11 @@
     return features.map((f) => {
       const fips = fipsRemapping[f.id] || f.id;
       const data = byFips[fips];
-      return Object.assign(
-        {},
-        {
-          id: f.id,
-          feature: f,
-        },
-        data
-      );
+      return {
+        id: f.id,
+        feature: f,
+        ...data,
+      };
     });
   }
 
@@ -703,7 +704,7 @@
 
     const joinedData = aggMapData(
       groups,
-      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered
+      isCounties ? countyFeaturesFiltered : stateFeaturesFiltered,
     );
 
     const domain = [];
@@ -735,7 +736,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        }
+        },
       );
 
     $states
@@ -758,7 +759,7 @@
         (update) => update,
         (exit) => {
           exit.transition().duration(350).attr('opacity', 0).remove();
-        }
+        },
       )
       .attr('d', (d) => path(d.feature))
       .attr('fill', fillColor);
@@ -845,7 +846,7 @@
           return $item;
         },
         (update) => update,
-        (exit) => exit.remove()
+        (exit) => exit.remove(),
       )
       .each(function (d, i) {
         $(this).css('background-color', i === 0 ? mapNoDataColor : mapColors[i - 1]);
@@ -870,16 +871,13 @@
 
     $cell.attr('transform', `translate(${yAxisWidth}, 0)`);
 
-    renderCharts(
-      $overview,
-      data,
-      Object.assign({}, options, {
-        allowDrilldown: false,
-        chartWidth,
-        chartHeight,
-        barPad: 3,
-      })
-    );
+    renderCharts($overview, data, {
+      ...options,
+      allowDrilldown: false,
+      chartWidth,
+      chartHeight,
+      barPad: 3,
+    });
   }
 
   function renderGrid(data, options) {
@@ -954,13 +952,17 @@
 
     renderCharts(
       $svg,
-      Object.assign({}, data, {groups}),
-      Object.assign({}, options, {
+      {
+        ...data,
+        groups,
+      },
+      {
+        ...options,
         allowDrilldown,
         chartWidth,
         chartHeight,
         barPad,
-      })
+      },
     );
   }
 
@@ -1087,7 +1089,7 @@
         .selectAll('.bar')
         .data(
           (l) => l,
-          (d) => String(d.data.date.getTime())
+          (d) => String(d.data.date.getTime()),
         )
         .enter()
         .append('rect')
@@ -1200,23 +1202,21 @@
 
   function showMapTooltip(options) {
     const {value} = options;
-    showTooltip(
-      Object.assign({}, options, {
-        title: value.label,
-        subtitle: timeLabels[filters.time],
-        fieldLabels: mapDataPointLabels,
-      })
-    );
+    showTooltip({
+      ...options,
+      title: value.label,
+      subtitle: timeLabels[filters.time],
+      fieldLabels: mapDataPointLabels,
+    });
   }
 
   function showChartTooltip(options) {
     const {value} = options;
-    showTooltip(
-      Object.assign({}, options, {
-        title: formatTooltipDate(value.date),
-        fieldLabels: dataPointLabels,
-      })
-    );
+    showTooltip({
+      ...options,
+      title: formatTooltipDate(value.date),
+      fieldLabels: dataPointLabels,
+    });
   }
 
   function showTooltip(options) {
@@ -1272,13 +1272,12 @@
       }));
     }
     if (filters.per100k) {
-      dataPoints = dataPoints.map((dp) =>
-        Object.assign({}, dp, {
-          key: per100kKey(dp.key),
-          suffix: ' per 100k',
-          formatter: formatPer100kValue,
-        })
-      );
+      dataPoints = dataPoints.map((dp) => ({
+        ...dp,
+        key: per100kKey(dp.key),
+        suffix: ' per 100k',
+        formatter: formatPer100kValue,
+      }));
       if (value.pop != undefined) {
         dataPoints.push({
           key: 'pop',
@@ -1320,7 +1319,7 @@
               <div class="tooltip-grid ${columnClass}">
                 ${dataPointEl.join('')}
               </div>
-              ${drilldownMsg}</div>`
+              ${drilldownMsg}</div>`,
       );
   }
 
@@ -1544,7 +1543,7 @@
     setTimeout(fetchCountyData, 200);
   } else {
     Promise.all([fetchStateDataPromise, fetchCountyData()]).then(() =>
-      renderCounties(filters.state)
+      renderCounties(filters.state),
     );
   }
 
