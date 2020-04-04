@@ -1245,19 +1245,33 @@ import './style.css';
     const pageY = evt.pageY;
     const clientY = evt.clientY;
     const pad = 10;
-    const css = {left: '', right: '', top: '', bottom: ''};
+    const css = {left: '', right: '', top: '', bottom: '', transform: ''};
     const winWidth = window.innerWidth;
     const winHeight = window.innerHeight;
-    // If it overflows right
-    if (pageX + 250 > winWidth) {
-      css.right = `${winWidth - pageX + pad}px`;
-    } else {
-      css.left = `${pageX + pad}px`;
-    }
-    if (clientY + 250 > winHeight) {
-      const bodyHeight = document.body.getBoundingClientRect().height;
+    const bodyHeight = document.body.getBoundingClientRect().height;
+
+    const fitsLeft = pageX - 250 > 0;
+    const fitsRight = pageX + 250 < winWidth;
+    const fitsTop = clientY - 250 > 0;
+    const fitsBottom = clientY - 250 < winHeight;
+
+    if (fitsTop) {
       css.bottom = `${bodyHeight - pageY + pad}px`;
     } else {
+      css.top = `${pageY + pad}px`;
+    }
+
+    if (fitsRight) {
+      css.left = `${pageX + pad}px`;
+    } else if (fitsLeft) {
+      css.right = `${winWidth - pageX + pad}px`;
+    } else if (fitsTop || !fitsBottom) {
+      css.left = pageX;
+      css.transform = 'translateX(-50%)';
+      css.bottom = `${bodyHeight - pageY + pad}px`;
+    } else if (fitsBottom) {
+      css.left = pageX;
+      css.transform = 'translateX(-50%)';
       css.top = `${pageY + pad}px`;
     }
 
