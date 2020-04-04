@@ -446,7 +446,7 @@ body.touch .click {
 }
 /* Allow tapping tooltip on touch devices (for drilldown) */
 body.touch #tooltip.shown {
-  pointer-events: all;
+  pointer-events: auto;
 }
 #tooltip h4 {
   font-size: 14px;
@@ -497,7 +497,7 @@ body.touch #tooltip.shown {
 .back-to-states.shown {
   display: inline-block;
   opacity: 1;
-  pointer-events: all;
+  pointer-events: auto;
 }
 
 @media (max-width: 600px) {
