@@ -6,6 +6,7 @@ import findLast from 'lodash/findLast';
 import $ from 'jquery';
 import * as history from 'history';
 import * as topojson from 'topojson-client';
+import './style.css';
 
 (function () {
   const isTouchDevice = 'ontouchstart' in document.documentElement;

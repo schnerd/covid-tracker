@@ -7,7 +7,8 @@
   "scripts": {
     "lint": "eslint src",
     "watch": "webpack-dev-server --open",
-    "build": "webpack"
+    "build": "webpack",
+    "deploy": "yarn build && git push origin master:master"
   },
   "dependencies": {
     "core-js": "3",
@@ -25,9 +26,11 @@
     "@babel/core": "^7.9.0",
     "@babel/preset-env": "^7.9.0",
     "babel-loader": "^8.1.0",
-    "copy-webpack-plugin": "^5.1.1",
+    "clean-webpack-plugin": "^3.0.0",
+    "css-loader": "^3.4.2",
     "eslint": "^6.8.0",
     "html-webpack-plugin": "^4.0.4",
+    "mini-css-extract-plugin": "^0.9.0",
     "uglifyjs-webpack-plugin": "^2.2.0",
     "webpack": "^4.42.1",
     "webpack-cli": "^3.3.11",

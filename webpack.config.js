@@ -1,12 +1,15 @@
 /* eslint-env node */
+const path = require('path');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CopyPlugin = require('copy-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const {CleanWebpackPlugin} = require('clean-webpack-plugin');
 
 module.exports = {
   entry: './src/main.js',
   output: {
-    path: __dirname,
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].[contenthash].js',
   },
   mode: 'production',
   module: {
@@ -15,15 +18,22 @@ module.exports = {
         test: /\.(js)$/,
         use: 'babel-loader',
       },
+      {
+        test: /\.css$/i,
+        use: [MiniCssExtractPlugin.loader, 'css-loader'],
+      },
     ],
   },
   plugins: [
+    new CleanWebpackPlugin(),
+    new MiniCssExtractPlugin({
+      filename: '[name].[contenthash].css',
+    }),
     new HtmlWebpackPlugin({
-      filename: 'index.html',
+      filename: path.resolve(__dirname, './index.html'), // 'index.html',
       template: 'src/index.html',
       inject: false,
     }),
-    new CopyPlugin([{from: 'src/style.css', to: 'style.css'}]),
   ],
   optimization: {
     moduleIds: 'hashed',
