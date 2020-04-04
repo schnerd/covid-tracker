@@ -8,7 +8,7 @@
     "lint": "eslint src",
     "dev": "webpack-dev-server --progress --open",
     "build": "NODE_ENV=production webpack",
-    "deploy": "yarn build && git push origin master:master"
+    "deploy": "yarn build && git add . && git commit -m \"build\" && git push origin master:master"
   },
   "dependencies": {
     "core-js": "3",
