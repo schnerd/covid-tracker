@@ -1145,8 +1145,8 @@ import './style.css';
 
       function onClick() {
         if (allowDrilldown) {
-          window.scrollTo(0, 0);
           setStateFilter(data.key);
+          scrollTo('#viz-overview');
         }
       }
 
@@ -1417,6 +1417,14 @@ import './style.css';
     router.push({[filterKeys.state]: state});
   }
 
+  function scrollTo(selector) {
+    const el = document.querySelector(selector);
+    if (!el || !el.scrollIntoView) {
+      window.scrollTo(0, 0);
+    }
+    el.scrollIntoView({behavior: 'smooth', block: 'start'});
+  }
+
   function attachEvents() {
     $('#state-select').change(function () {
       const val = $(this).val();
@@ -1424,7 +1432,7 @@ import './style.css';
     });
     $('.back-to-states').click(function () {
       setStateFilter('all');
-      window.scrollTo(0, 0);
+      scrollTo('#viz-map');
     });
     $('#field-select').change(function () {
       router.push({
@@ -1439,7 +1447,7 @@ import './style.css';
         setStateFilter(tooltipValue.state || tooltipValue.label);
         // Scroll to top if this was a chart (not map) click
         if (!tooltipValue.label) {
-          window.scrollTo(0, 0);
+          scrollTo('#viz-overview');
         }
       }
     });
