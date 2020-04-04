@@ -1476,13 +1476,11 @@ import './style.css';
   let mapDataPromise;
   function fetchMapData() {
     if (!mapDataPromise) {
-      mapDataPromise = d3
-        .json('https://raw.githubusercontent.com/schnerd/covid-tracker/master/us-counties.topojson')
-        .then((us) => {
-          stateFeatures = topojson.feature(us, us.objects.states).features;
-          stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
-          countyFeatures = topojson.feature(us, us.objects.counties).features;
-        });
+      mapDataPromise = d3.json('assets/us-counties.topojson').then((us) => {
+        stateFeatures = topojson.feature(us, us.objects.states).features;
+        stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
+        countyFeatures = topojson.feature(us, us.objects.counties).features;
+      });
     }
     return mapDataPromise;
   }
