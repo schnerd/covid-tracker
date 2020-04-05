@@ -68,7 +68,7 @@ import './style.css';
   // On the map, "daily new" fields are averages
   const mapDataPointLabels = {...dataPointLabels};
   Object.keys(mapDataPointLabels).forEach((key) => {
-    if (key.startsWith('new')) {
+    if (key.indexOf('new') === 0) {
       mapDataPointLabels[key] = `Avg ${mapDataPointLabels[key].replace('New', 'Daily')}`;
     }
   });
@@ -929,7 +929,7 @@ import './style.css';
     const allowDrilldown = !options.isCounties;
 
     groups.forEach((g) => {
-      if (field.startsWith('new')) {
+      if (field.indexOf('new') === 0) {
         // For daily new cases / deaths, sort by the sum of the data currently being shown
         g.sortVal = d3.sum(g.values, (v) => v[field]);
       } else {
