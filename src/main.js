@@ -610,6 +610,9 @@ import './style.css';
 
     groups.forEach((group) => {
       const {values} = group;
+      if (!values.length) {
+        return;
+      }
       const {fips, pop} = values[0];
 
       // Just aggregate the number of new cases/etc across the selected time range
