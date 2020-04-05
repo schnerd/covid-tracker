@@ -53,7 +53,13 @@ module.exports = {
   },
   optimization: {
     moduleIds: 'hashed',
-    minimizer: devMode ? [] : [new UglifyJsPlugin()],
+    minimizer: devMode
+      ? []
+      : [
+          new UglifyJsPlugin({
+            sourceMap: true,
+          }),
+        ],
     splitChunks: {
       cacheGroups: {
         vendor: {
