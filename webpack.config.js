@@ -12,6 +12,7 @@ const dist = devMode ? 'dist-dev' : 'dist';
 
 module.exports = {
   entry: './src/main.js',
+  devtool: devMode ? false : 'source-map',
   output: {
     path: path.resolve(__dirname, dist),
     filename: devMode ? '[name].js' : '[name].[contenthash].js',
