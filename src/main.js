@@ -330,7 +330,7 @@ import './style.css';
           if (!usValueAtDate[key]) {
             usValueAtDate[key] = 0;
           }
-          usValueAtDate[key] += stateValueAtDate[key];
+          usValueAtDate[key] += stateValueAtDate[key] || 0;
         });
       });
     });
@@ -350,15 +350,15 @@ import './style.css';
       const fips = c.fips;
 
       const value = {
-        fips,
+        fips: fips || '',
         date: new Date(Number(year), Number(month) - 1, Number(date)),
-        positive: Number(c.positive),
-        negative: Number(c.negative),
-        pending: Number(c.pending),
-        tests: Number(c.total),
-        newPositive: Number(c.positiveIncrease),
-        newNegative: Number(c.negativeIncrease),
-        newTests: Number(c.totalTestResultsIncrease),
+        positive: coerceNumber(c.positive),
+        negative: coerceNumber(c.negative),
+        pending: coerceNumber(c.pending),
+        tests: coerceNumber(c.total),
+        newPositive: coerceNumber(c.positiveIncrease),
+        newNegative: coerceNumber(c.negativeIncrease),
+        newTests: coerceNumber(c.totalTestResultsIncrease),
       };
 
       // Add to our map
@@ -373,6 +373,10 @@ import './style.css';
     });
 
     return byFips;
+  }
+
+  function coerceNumber(value) {
+    return value == undefined ? null : Number(value);
   }
 
   function processCounties(csv, pop) {
