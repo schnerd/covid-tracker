@@ -1523,7 +1523,7 @@ import './style.css';
     return Promise.all([
       d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
       d3.csv('assets/fips-pop-sta.csv'),
-      d3.json('https://covidtracking.com/api/states/daily'),
+      d3.json('https://covidtracking.com/api/v1/states/daily.json'),
     ]).then(([csv, statePop, testingData]) => {
       processStates(csv, statePop, testingData);
 
