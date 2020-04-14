@@ -89,7 +89,22 @@ import './style.css';
   };
 
   const populationOverrides = {
-    [KANSAS_CITY_FAKE_FIPS]: 491918,
+    // Kansas City, MO edge cases. City is not a real county, it overlaps
+    // with four other counties. Mayor posted a tweet with population estimates
+    // for the non-city portion of these counties:
+    // https://twitter.com/QuintonLucasKC/status/1249756319805997058
+    [KANSAS_CITY_FAKE_FIPS]: 505604,
+    // Cass County, MO
+    '29037': 85,
+    // Jackson County, MO
+    '29095': 313870,
+    // Clay County, MO
+    '29047': 137446,
+    // Platte County, MO
+    '29165': 54202,
+
+    // New York City - Sum of the 5 boroughs due to NYT geographic exception
+    '36061': 8336817,
   };
 
   const fipsRemapping = {
@@ -404,15 +419,12 @@ import './style.css';
   function processPopulations(pop) {
     const map = Object.assign({}, populationOverrides);
     pop.forEach((p) => {
-      // Normally there would be one population value per fips code,
-      // however there are geographic exceptions in our source file
-      // where counties are attributed to others. Use our fipsRemapping
-      // lookup to sum the populations where necessary.
       const fips = fipsRemapping[p.fips] || p.fips;
-      if (map[fips] == undefined) {
-        map[fips] = 0;
+      if (populationOverrides[fips]) {
+        map[fips] = populationOverrides[fips];
+      } else {
+        map[fips] = parseInt(p.pop);
       }
-      map[fips] += parseInt(p.pop);
     });
     return map;
   }
