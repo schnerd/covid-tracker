@@ -1415,8 +1415,9 @@ import './style.css';
   }
 
   const tooltipFmtPer100k = d3.format(',.1f');
+  const tooltipFmtPer100kSmall = d3.format(',.2f');
   function formatPer100kValue(n) {
-    return tooltipFmtPer100k(n);
+    return n >= 1 ? tooltipFmtPer100k(n) : tooltipFmtPer100kSmall(n);
   }
 
   const tooltipFmt = d3.format(',d');
