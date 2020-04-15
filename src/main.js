@@ -95,17 +95,17 @@ import './style.css';
   const populationOverrides = {
     // Kansas City, MO edge cases. City is not a real county, it overlaps
     // with four other counties. Mayor posted a tweet with population estimates
-    // for the non-city portion of these counties:
+    // for the city overall, and the parts of the counties that fall within the city.
     // https://twitter.com/QuintonLucasKC/status/1249756319805997058
     [KANSAS_CITY_FAKE_FIPS]: 505604,
     // Cass County, MO
-    '29037': 85,
+    '29037': 103610 - 85,
     // Jackson County, MO
-    '29095': 313870,
+    '29095': 700307 - 313870,
     // Clay County, MO
-    '29047': 137446,
+    '29047': 246365 - 137446,
     // Platte County, MO
-    '29165': 54202,
+    '29165': 102985 - 54202,
 
     // New York City - Sum of the 5 boroughs due to NYT geographic exception
     '36061': 8336817,
