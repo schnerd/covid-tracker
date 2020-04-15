@@ -1457,7 +1457,7 @@ import './style.css';
     });
     $('.back-to-states').click(function () {
       setStateFilter('all');
-      scrollTo('#vi');
+      scrollTo('#viz-map');
     });
     $('#field-select').change(function () {
       router.push({
