@@ -43,6 +43,10 @@ import './style.css';
   let tooltipHideTimer = null;
   let isTestingData = false;
 
+  let mapDataPromise;
+  let countyDataPromise;
+  let stateDataPromise;
+
   ///////////////
   // Constants //
   ///////////////
@@ -146,9 +150,9 @@ import './style.css';
         // Update filter state variables and re-render
         this.parse();
         if (filters.state === 'all') {
-          renderAllStates();
+          fetchAndRenderStates();
         } else {
-          renderCounties(filters.state);
+          fetchAndRenderCounties(filters.state);
         }
       });
     }
@@ -1453,7 +1457,7 @@ import './style.css';
     });
     $('.back-to-states').click(function () {
       setStateFilter('all');
-      scrollTo('#viz-map');
+      scrollTo('#vi');
     });
     $('#field-select').change(function () {
       router.push({
@@ -1520,7 +1524,6 @@ import './style.css';
   }, 100);
   window.addEventListener('resize', resizeWindow);
 
-  let mapDataPromise;
   function fetchMapData() {
     if (!mapDataPromise) {
       mapDataPromise = d3.json('assets/us-counties.topojson').then((us) => {
@@ -1533,43 +1536,56 @@ import './style.css';
   }
 
   function fetchStateData() {
-    return Promise.all([
-      d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
-      d3.csv('assets/fips-pop-sta.csv'),
-      d3.json('https://covidtracking.com/api/v1/states/daily.json'),
-    ]).then(([csv, statePop, testingData]) => {
-      processStates(csv, statePop, testingData);
+    if (!stateDataPromise) {
+      stateDataPromise = Promise.all([
+        d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
+        d3.csv('assets/fips-pop-sta.csv'),
+        d3.json('https://covidtracking.com/api/v1/states/daily.json'),
+      ]).then(([csv, statePop, testingData]) => {
+        processStates(csv, statePop, testingData);
 
-      // Populate state select
-      const stateOptions = stateData
-        .slice(0)
-        .sort((a, b) => a.key.localeCompare(b.key))
-        .map((s) => `<option value="${s.key}">${s.key}</option>`)
-        .join('');
-      $('#state-select').html(`<option value="all" selected>All States</option>${stateOptions}`);
-      if (filters.state !== 'all') {
-        $('#state-select').val(filters.state);
-      }
-    });
+        // Populate state select
+        const stateOptions = stateData
+          .slice(0)
+          .sort((a, b) => a.key.localeCompare(b.key))
+          .map((s) => `<option value="${s.key}">${s.key}</option>`)
+          .join('');
+        $('#state-select').html(`<option value="all" selected>All States</option>${stateOptions}`);
+        if (filters.state !== 'all') {
+          $('#state-select').val(filters.state);
+        }
+      });
+    }
+    return stateDataPromise;
   }
 
   function fetchCountyData() {
-    return Promise.all([
-      d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
-      d3.csv('assets/fips-pop-cty.csv'),
-    ]).then(([csv, countyPop]) => {
-      processCounties(csv, countyPop);
-    });
+    if (!countyDataPromise) {
+      countyDataPromise = Promise.all([
+        d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
+        d3.csv('assets/fips-pop-cty.csv'),
+      ]).then(([csv, countyPop]) => {
+        processCounties(csv, countyPop);
+      });
+    }
+    return countyDataPromise;
   }
 
-  const fetchStateDataPromise = fetchStateData();
+  function fetchAndRenderStates() {
+    stateDataPromise.then(() => renderAllStates());
+  }
+
+  function fetchAndRenderCounties(state) {
+    Promise.all([stateDataPromise, fetchCountyData()]).then(() => renderCounties(state));
+  }
+
+  fetchStateData();
   if (filters.state === 'all') {
-    fetchStateDataPromise.then(() => renderAllStates());
+    fetchAndRenderStates();
+    // Fetch this in background so its ready immediately when they click on a county
     setTimeout(fetchCountyData, 200);
   } else {
-    Promise.all([fetchStateDataPromise, fetchCountyData()]).then(() =>
-      renderCounties(filters.state),
-    );
+    fetchAndRenderCounties(filters.state);
   }
 
   attachEvents();
