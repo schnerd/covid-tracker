@@ -3,6 +3,7 @@ import scaleCluster from 'd3-scale-cluster';
 import memoizeOne from 'memoize-one';
 import throttle from 'lodash/throttle';
 import findLast from 'lodash/findLast';
+import sortedIndexBy from 'lodash/sortedIndexBy';
 import $ from 'jquery';
 import * as history from 'history';
 import * as topojson from 'topojson-client';
@@ -507,29 +508,32 @@ import './style.css';
 
   function filterData(groups, datesToShow, hasTestingData) {
     const valueKeys = getValueKeys(hasTestingData);
+    const allValueKeys = valueKeys.concat(valueKeys.map(per100kKey));
 
     const extents = {};
-    const extentKeys = ['date'].concat(valueKeys).concat(valueKeys.map(per100kKey));
+    const extentKeys = ['date'].concat(allValueKeys);
     extentKeys.forEach((key) => (extents[key] = [null, null]));
+
+    const dateAccessor = (v) => v.date.getTime();
 
     const newGroups = groups.map((g) => {
       const {values} = g;
       const newValues = [];
-      let valuesIndex = 0;
+
+      let startDate = datesToShow[0];
+      // Using sortedIndexBy to binary search for the index where our dates start
+      let startIndex = sortedIndexBy(values, {date: startDate}, dateAccessor) + 1;
+
+      let valuesIndex = startIndex;
 
       // Get the dates we care about
       for (var i = 0; i < datesToShow.length; i++) {
-        while (
-          values[valuesIndex] &&
-          values[valuesIndex].date.getTime() < datesToShow[i].getTime()
-        ) {
-          valuesIndex++;
-        }
         if (
           values[valuesIndex] &&
           values[valuesIndex].date.getTime() === datesToShow[i].getTime()
         ) {
           newValues.push({...values[valuesIndex], i});
+          valuesIndex++;
         }
       }
 
