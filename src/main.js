@@ -1281,7 +1281,7 @@ import './style.css';
       function onClick() {
         if (allowDrilldown) {
           setStateFilter(data.key);
-          scrollTo('#viz-overview');
+          scrollTo('#viz');
         }
       }
 
@@ -1586,7 +1586,7 @@ import './style.css';
         setStateFilter(tooltipValue.state || tooltipValue.label);
         // Scroll to top if this was a chart (not map) click
         if (!tooltipValue.label) {
-          scrollTo('#viz-overview');
+          scrollTo('#viz');
         }
       }
     });
