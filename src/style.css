@@ -11,6 +11,7 @@
   --baseLine: #aaa;
   --crosshair: #999;
   --tickText: #999;
+  --primary0: #5f2f71;
   --primary1: #9b59b6;
   --primary2: #c38bda;
   --font: 'Montserrat', sans-serif;
@@ -68,7 +69,7 @@ div {
 }
 
 header {
-  margin: 15px 20px 0;
+  margin: 15px 20px 10px;
 }
 header h1 {
   font-size: 20px;
@@ -344,7 +345,7 @@ a:visited {
 }
 
 #grid {
-  margin-top: 30px;
+  margin-top: 45px;
 }
 
 .cell-clickable {
@@ -404,6 +405,12 @@ a:visited {
 }
 .layer-2 .bar {
   fill: var(--primary2);
+}
+.ma-line {
+  stroke: var(--primary2);
+  stroke-width: 2;
+  fill: none;
+  stroke-linecap: round;
 }
 
 @media (min-width: 1024px) {
@@ -492,7 +499,7 @@ body.touch #tooltip.shown {
   cursor: pointer;
   color: var(--primary1);
   font-size: 16px;
-  margin: 10px 20px 0;
+  margin: 0 20px 10px;
 }
 .back-to-states.shown {
   display: inline-block;
@@ -519,8 +526,9 @@ body.touch #tooltip.shown {
   display: flex;
   flex-direction: row;
   align-items: center;
-  margin: 20px 20px 0;
-  font-size: 18px;
+  margin: 0 20px 10px;
+  font-size: 16px;
+  color: var(--textSub);
 }
 .legend-item {
   display: flex;
@@ -533,9 +541,14 @@ body.touch #tooltip.shown {
   height: 1em;
   margin-right: 6px;
 }
+.legend-line {
+  width: 1em;
+  height: 2px;
+  margin-right: 6px;
+}
 @media (min-width: 600px) {
   .legend {
-    font-size: 20px;
+    font-size: 18px;
   }
 }
 
@@ -552,6 +565,9 @@ body.touch #tooltip.shown {
   background-color: var(--primary2);
 }
 
+.ma-legend {
+  display: none;
+}
 .testing-legend {
   display: none;
 }

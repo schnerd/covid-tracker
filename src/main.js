@@ -78,12 +78,21 @@ import './style.css';
     }
   });
 
+  const fieldHasMovingAverage = {
+    newCases: true,
+    newDeaths: true,
+    [per100kKey('newCases')]: true,
+    [per100kKey('newDeaths')]: true,
+  };
+
   const timeLabels = {
     '7d': 'Last 7 days',
     '14d': 'Last 14 days',
     '1mo': 'Last 30 days',
     all: 'All-time',
   };
+
+  const MA_NUM_DAYS = 7;
 
   const KANSAS_CITY_FAKE_FIPS = '29999';
 
@@ -158,7 +167,7 @@ import './style.css';
       });
     }
 
-    parse() {
+    parse(firstParse = false) {
       const qs = parseQs(this.history.location.search);
       const keys = Object.keys(filterKeys);
 
@@ -170,7 +179,7 @@ import './style.css';
         if (typeof filterDefaults[k] === 'boolean' && typeof v === 'string') {
           v = v === '1';
         }
-        if (filters[k] === v) {
+        if (filters[k] === v && !firstParse) {
           continue;
         }
         switch (k) {
@@ -198,6 +207,12 @@ import './style.css';
               } else {
                 $('.testing-legend').hide();
                 $('#filter-use-log-scale').show();
+              }
+              if (v === 'newCases' || v === 'newDeaths') {
+                $('.ma-legend .legend-field-label').text(dataPointLabels[v]);
+                $('.ma-legend').show();
+              } else {
+                $('.ma-legend').hide();
               }
             }
             break;
@@ -264,7 +279,7 @@ import './style.css';
     return result ? `?${result}` : '';
   }
   const router = new Router(history.createBrowserHistory());
-  router.parse();
+  router.parse(true);
 
   /////////////////////
   // Data Processing //
@@ -510,9 +525,16 @@ import './style.css';
     const valueKeys = getValueKeys(hasTestingData);
     const allValueKeys = valueKeys.concat(valueKeys.map(per100kKey));
 
+    // Keys for which to compute moving averages
+    let maKeys = ['newCases', 'newDeaths'];
+    maKeys = maKeys.concat(maKeys.map(per100kKey));
+
     const extents = {};
     const extentKeys = ['date'].concat(allValueKeys);
     extentKeys.forEach((key) => (extents[key] = [null, null]));
+
+    const maStartDate = new Date(datesToShow[0]);
+    maStartDate.setDate(maStartDate.getDate() - MA_NUM_DAYS);
 
     const dateAccessor = (v) => v.date.getTime();
 
@@ -520,21 +542,76 @@ import './style.css';
       const {values} = g;
       const newValues = [];
 
+      // Start/end date of the visualized range
       let startDate = datesToShow[0];
+      let endDate = last(datesToShow);
+      // However we start 7 days before to calculate moving averages
+      let curDate = new Date(maStartDate);
+
       // Using sortedIndexBy to binary search for the index where our dates start
-      let startIndex = sortedIndexBy(values, {date: startDate}, dateAccessor) + 1;
+      let valuesIndex = sortedIndexBy(values, {date: maStartDate}, dateAccessor);
 
-      let valuesIndex = startIndex;
+      // Data structure to store our N-day moving average window for each field
+      let maWindows = {};
+      maKeys.forEach((key) => {
+        maWindows[key] = [];
+      });
 
-      // Get the dates we care about
-      for (var i = 0; i < datesToShow.length; i++) {
-        if (
-          values[valuesIndex] &&
-          values[valuesIndex].date.getTime() === datesToShow[i].getTime()
-        ) {
-          newValues.push({...values[valuesIndex], i});
+      while (curDate.getTime() <= endDate.getTime()) {
+        // Is this date within our visualized range?
+        let isWithinRange = curDate.getTime() >= startDate.getTime();
+
+        // Peek at the next value in our values array – is there a value for the current date?
+        let nextValue = values[valuesIndex];
+        let matchingValue =
+          nextValue && nextValue.date.getTime() === curDate.getTime() ? nextValue : null;
+
+        // First update moving averages
+        let maValues = {};
+        maKeys.forEach((key) => {
+          const arr = maWindows[key];
+          if (arr.length === MA_NUM_DAYS) {
+            arr.shift();
+          }
+          // If there is data for the current date/field combo, use that.
+          if (matchingValue && typeof matchingValue[key] === 'number') {
+            arr.push(nextValue[key]);
+          } else {
+            arr.push(0);
+          }
+          // Store today's moving average as the mean of our moving average window
+          maValues[maKey(key)] = d3.mean(arr);
+        });
+
+        // For dates that will be visualized, push a value into the newValues array
+        if (isWithinRange) {
+          if (matchingValue) {
+            newValues.push(Object.assign({}, matchingValue, maValues));
+          } else {
+            // If there was no matching value for today, all we have is a moving average,
+            // just generate a fake data point with the average values
+            newValues.push(
+              Object.assign(
+                {
+                  date: new Date(curDate),
+                  fips: values[0].fips,
+                  pop: values[0].pop,
+                  state: values[0].state,
+                  county: values[0].county,
+                },
+                maValues,
+              ),
+            );
+          }
+        }
+
+        // If current index of values array was a match for this date, we want to move to next.
+        if (matchingValue) {
           valuesIndex++;
         }
+
+        // Make next loop iteration use tomorrow's date
+        curDate.setDate(curDate.getDate() + 1);
       }
 
       // Update the extents object
@@ -564,6 +641,10 @@ import './style.css';
 
   function per100kKey(key) {
     return `${key}_p100k`;
+  }
+
+  function maKey(key) {
+    return `${key}_ma`;
   }
 
   function last(arr) {
@@ -905,6 +986,8 @@ import './style.css';
     const yAxisWidth = useLarge ? 40 : 30;
     const xAxisHeight = useLarge ? 20 : 14;
     const marginRight = 16;
+    const cellLabelX = 6;
+    const cellLabelY = 0;
     const chartWidth = width - yAxisWidth - marginRight;
     const chartHeight = height - xAxisHeight;
 
@@ -915,6 +998,8 @@ import './style.css';
       allowDrilldown: false,
       chartWidth,
       chartHeight,
+      cellLabelX,
+      cellLabelY,
       barPad: 3,
     });
   }
@@ -931,11 +1016,14 @@ import './style.css';
 
     const useLarge = window.innerWidth >= 1024;
     const chartAspectRatio = 2.15;
-    const chartPadding = useLarge ? 30 : 25;
+    const chartXPadding = useLarge ? 30 : 25;
+    const chartYPadding = useLarge ? 40 : 35;
     const estChartWidth = useLarge ? 250 : 150;
-    const numCols = Math.floor(window.innerWidth / (estChartWidth + chartPadding));
-    const chartWidth = Math.floor((window.innerWidth - chartPadding * (numCols + 1)) / numCols);
+    const numCols = Math.floor(window.innerWidth / (estChartWidth + chartXPadding));
+    const chartWidth = Math.floor((window.innerWidth - chartXPadding * (numCols + 1)) / numCols);
 
+    const cellLabelX = -20;
+    const cellLabelY = -10;
     const numStates = groups.length;
     const chartHeight = Math.floor(chartWidth / chartAspectRatio);
     const yAxisWidth = useLarge ? 40 : 30;
@@ -943,8 +1031,8 @@ import './style.css';
     const winWidth = window.innerWidth;
     const barPad = daysToShow > 10 ? 1 : 2;
 
-    const colWidth = chartWidth + chartPadding;
-    const rowHeight = chartHeight + xAxisHeight + chartPadding;
+    const colWidth = chartWidth + chartXPadding;
+    const rowHeight = chartHeight + xAxisHeight + chartYPadding;
 
     const numRows = Math.ceil(numStates / numCols);
 
@@ -1000,6 +1088,8 @@ import './style.css';
         allowDrilldown,
         chartWidth,
         chartHeight,
+        cellLabelX,
+        cellLabelY,
         barPad,
       },
     );
@@ -1013,6 +1103,8 @@ import './style.css';
       allowDrilldown,
       chartWidth,
       chartHeight,
+      cellLabelX,
+      cellLabelY,
       barPad,
     } = options;
     const {groups, extents} = data;
@@ -1021,14 +1113,14 @@ import './style.css';
 
     const xScale = d3
       .scaleBand()
-      .domain(datesToShow)
+      .domain(d3.range(datesToShow.length))
       .rangeRound([0, chartWidth])
       .paddingInner((barPad * daysToShow) / chartWidth)
       .paddingOuter((barPad * 5) / chartWidth);
     const barWidth = xScale.bandwidth();
 
-    const barXMidpoints = datesToShow.map((d) => {
-      return xScale(d) + barWidth / 2;
+    const barXMidpoints = datesToShow.map((d, i) => {
+      return xScale(i) + barWidth / 2;
     });
 
     function makeYScale(extent) {
@@ -1134,7 +1226,7 @@ import './style.css';
         .append('rect')
         .attr('class', 'bar')
         .attr('width', barWidth)
-        .attr('x', (d) => xScale(d.data.date))
+        .attr('x', (d, i) => xScale(i))
         .attr('y', (d) => {
           const y = Math.floor(cellYScale(d[1]));
           return Number.isNaN(y) ? chartHeight : y;
@@ -1143,6 +1235,22 @@ import './style.css';
           const y = Math.max(Math.ceil(chartHeight - cellYScale(d[1] - d[0])), 0);
           return Number.isNaN(y) ? 0 : y;
         });
+
+      if (fieldHasMovingAverage[field]) {
+        const xOffset = barWidth / 2;
+        const line = d3
+          .line()
+          .x((d, i) => Math.round(xScale(i) + xOffset))
+          .y((d) => {
+            const y = Math.floor(cellYScale(d[maKey(field)]));
+            return Number.isNaN(y) ? chartHeight : y;
+          })
+          .curve(d3.curveMonotoneX);
+
+        $cell.append('path').attr('class', 'ma-line').datum(values).attr('d', line);
+      } else {
+        $cell.selectAll('.ma-line').remove();
+      }
 
       const $crosshair = $cell
         .append('line')
@@ -1164,7 +1272,7 @@ import './style.css';
         const date = datesToShow[index];
         const value = values.find((v) => v.date.getTime() === date.getTime());
         if (value && (value !== tooltipValue || !tooltipShown)) {
-          const chPos = Math.round(xScale(date) + barWidth / 2);
+          const chPos = Math.round(xScale(index) + barWidth / 2);
           $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
           showChartTooltip({value, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
         }
@@ -1202,8 +1310,8 @@ import './style.css';
       $cell
         .append('text')
         .text(groups.length > 1 ? `${counter}. ${data.key}` : data.key)
-        .attr('x', 6)
-        .attr('y', 14)
+        .attr('x', cellLabelX)
+        .attr('y', cellLabelY)
         .attr('class', 'cell-label')
         .on('click', onClick);
 
