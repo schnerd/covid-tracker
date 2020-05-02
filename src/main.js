@@ -1242,7 +1242,7 @@ import './style.css';
           .line()
           .x((d, i) => Math.round(xScale(i) + xOffset))
           .y((d) => {
-            const y = Math.floor(cellYScale(d[maKey(field)]));
+            const y = Math.min(Math.floor(cellYScale(d[maKey(field)])), chartHeight);
             return Number.isNaN(y) ? chartHeight : y;
           })
           .curve(d3.curveMonotoneX);
