@@ -577,5 +577,14 @@ body.touch #tooltip.shown {
   font-size: 18px;
 }
 
+.banner {
+  display: block;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: var(--primary1);
+  color: #fff;
+}
 
-/*# sourceMappingURL=main.ab357e511e8e2b676425.css.map*/
+
+/*# sourceMappingURL=main.a22910662cbe2ed4dfa8.css.map*/
