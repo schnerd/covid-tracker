@@ -576,3 +576,12 @@ body.touch #tooltip.shown {
   margin: 20px;
   font-size: 18px;
 }
+
+.banner {
+  display: block;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: 14px;
+  background: var(--primary1);
+  color: #fff;
+}
