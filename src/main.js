@@ -453,7 +453,7 @@ import './style.css';
     const valueKeys = getValueKeys(!!testingMap);
 
     groups.forEach((group) => {
-      const newValues = [];
+      const newRows = [];
       for (let i = 0; i < group.values.length; i++) {
         const prevRow = group.values[i - 1];
         const row = group.values[i];
@@ -478,7 +478,7 @@ import './style.css';
           parsed.newCases = parsed.cases;
           parsed.newDeaths = parsed.deaths;
         }
-        newValues.push(parsed);
+        newRows.push(parsed);
 
         // Add in testing data
         const testing = ((testingMap ? testingMap[parsed.fips] : {}) || {})[parsed.date.getTime()];
@@ -515,7 +515,7 @@ import './style.css';
           lastCasesDate = parsed.date;
         }
       }
-      group.values = newValues;
+      group.values = newRows;
     });
 
     return groups;
@@ -540,7 +540,7 @@ import './style.css';
 
     const newGroups = groups.map((g) => {
       const {values} = g;
-      const newValues = [];
+      const newRows = [];
 
       // Start/end date of the visualized range
       let startDate = datesToShow[0];
@@ -583,14 +583,14 @@ import './style.css';
           maValues[maKey(key)] = d3.mean(arr);
         });
 
-        // For dates that will be visualized, push a value into the newValues array
+        // For dates that will be visualized, push a value into the newRows array
         if (isWithinRange) {
           if (matchingValue) {
-            newValues.push(Object.assign({}, matchingValue, maValues));
+            newRows.push(Object.assign({}, matchingValue, maValues));
           } else {
             // If there was no matching value for today, all we have is a moving average,
             // just generate a fake data point with the average values
-            newValues.push(
+            newRows.push(
               Object.assign(
                 {
                   date: new Date(curDate),
@@ -615,21 +615,29 @@ import './style.css';
       }
 
       // Update the extents object
-      newValues.forEach((value) => {
+      newRows.forEach((row) => {
         extentKeys.forEach((key) => {
           const extent = extents[key];
-          if (value[key] != undefined && (extent[0] === null || value[key] < extent[0])) {
-            extents[key][0] = value[key];
+          const value = row[key];
+          if (value != undefined && (extent[0] === null || value < extent[0])) {
+            extent[0] = value;
           }
-          if (value[key] != undefined && (extent[1] === null || value[key] > extent[1])) {
-            extents[key][1] = value[key];
+          if (value != undefined && (extent[1] === null || value > extent[1])) {
+            extent[1] = value;
+          }
+          // Account for moving averages in the extent
+          if (fieldHasMovingAverage[key]) {
+            const maValue = row[maKey(key)];
+            if (maValue != undefined && (extent[1] === null || maValue > extent[1])) {
+              extent[1] = maValue;
+            }
           }
         });
       });
 
       return {
         ...g,
-        values: newValues,
+        values: newRows,
       };
     });
 
@@ -684,8 +692,8 @@ import './style.css';
       $('.testing-data-unavailable').hide();
     }
 
-    const gridData = filterGridData(groups, datesToShow, !isCounties);
     const overviewData = filterOverviewData(overview, datesToShow, true);
+    const gridData = filterGridData(groups, datesToShow, !isCounties);
 
     const options = {
       field,
@@ -1188,7 +1196,13 @@ import './style.css';
       let cellYScale = yScale;
       let cellYAxis = yAxis;
       if (!filters.consistentY) {
-        const extent = d3.extent(values, (d) => d[field]);
+        let extent = d3.extent(values, (d) => d[field]);
+        // Account for moving average values in extent
+        if (fieldHasMovingAverage[field]) {
+          const maField = maKey(field);
+          const maExtent = d3.extent(values, (d) => d[maField]);
+          extent = d3.extent(extent.concat(maExtent));
+        }
         cellYScale = makeYScale(extent);
         cellYAxis = makeAxis(cellYScale);
       }
