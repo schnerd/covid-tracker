@@ -67,6 +67,9 @@ div {
 .wrapper {
   position: relative;
 }
+.wrapper.loading {
+  cursor: wait;
+}
 
 header {
   margin: 15px 20px 10px;
@@ -229,7 +232,14 @@ a:visited {
 #viz {
   position: relative;
   padding-top: 20px;
+  transition: opacity 0.3s;
+  opacity: 1;
 }
+.loading #viz {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 #viz-top {
 }
 #viz-map,
@@ -587,4 +597,4 @@ body.touch #tooltip.shown {
 }
 
 
-/*# sourceMappingURL=main.a22910662cbe2ed4dfa8.css.map*/
+/*# sourceMappingURL=main.7fbffaa06bc1b23009d0.css.map*/
