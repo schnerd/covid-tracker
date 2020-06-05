@@ -21,6 +21,8 @@ import './style.css';
   let usData = null;
   let lastData = null;
 
+  let stateToFipsMap = {};
+
   // Map features
   let stateFeatures = null;
   let stateBorders = null;
@@ -43,10 +45,6 @@ import './style.css';
   let tooltipShown = null;
   let tooltipHideTimer = null;
   let isTestingData = false;
-
-  let mapDataPromise;
-  let countyDataPromise;
-  let stateDataPromise;
 
   ///////////////
   // Constants //
@@ -89,6 +87,7 @@ import './style.css';
     '7d': 'Last 7 days',
     '14d': 'Last 14 days',
     '1mo': 'Last 30 days',
+    '90d': 'Last 90 days',
     all: 'All-time',
   };
 
@@ -301,120 +300,33 @@ import './style.css';
     return valueKeys;
   }
 
-  function processStates(csv, pop, testingCsv) {
+  function processStates(csv, popMap) {
     const nestedStates = d3
       .nest()
       .key((k) => k.state)
       .entries(csv);
 
-    const testingByFips = processTestingData(testingCsv);
+    const processed = processGroups(nestedStates, popMap, true);
 
-    const popMap = processPopulations(pop);
-    stateData = processGroups(nestedStates, popMap, testingByFips);
-
-    const [usRawData, usRawTesting] = processUS(csv, testingByFips);
-    usData = processGroups(usRawData, popMap, usRawTesting);
-  }
-
-  function processUS(csv, testingByFips) {
-    const aggNytKeys = ['cases', 'deaths'];
-    const aggTestKeys = [
-      'positive',
-      'negative',
-      'pending',
-      'tests',
-      'newPositive',
-      'newNegative',
-      'newTests',
-    ];
-
-    // Nest by date (easier to aggregate)
-    const nested = d3
-      .nest()
-      .key((k) => k.date)
-      .entries(csv);
-
-    const usValues = nested.map((n) => {
-      const stateValuesAtDate = n.values;
-      const usValuesAtDate = {
-        fips: '00',
-        date: stateValuesAtDate[0].date,
-      };
-      stateValuesAtDate.forEach((state) => {
-        aggNytKeys.forEach((key) => {
-          if (!usValuesAtDate[key]) {
-            usValuesAtDate[key] = 0;
-          }
-          usValuesAtDate[key] += Number(state[key]);
-        });
-      });
-      return usValuesAtDate;
-    });
-
-    // Aggregate testing data
-    const testsByDate = {};
-    Object.keys(testingByFips).forEach((fips) => {
-      const dates = testingByFips[fips];
-      Object.keys(dates).forEach((date) => {
-        if (!testsByDate[date]) {
-          testsByDate[date] = {};
+    stateData = [];
+    processed.forEach((group) => {
+      if (group.key === 'US') {
+        group.key = 'United States';
+        usData = [group];
+      } else {
+        if (!stateToFipsMap[group.key]) {
+          stateToFipsMap[group.key] = group.values[0].fips;
         }
-        const stateValueAtDate = dates[date];
-        const usValueAtDate = testsByDate[date];
-        aggTestKeys.forEach((key) => {
-          if (!usValueAtDate[key]) {
-            usValueAtDate[key] = 0;
-          }
-          usValueAtDate[key] += stateValueAtDate[key] || 0;
-        });
-      });
+        stateData.push(group);
+      }
     });
-
-    return [[{key: 'United States', values: usValues}], {'00': testsByDate}];
-  }
-
-  function processTestingData(csv) {
-    const byFips = {};
-    csv.forEach((c) => {
-      if (!c.date) {
-        return;
-      }
-      const year = String(c.date).substring(0, 4);
-      const month = String(c.date).substring(4, 6);
-      const date = String(c.date).substring(6, 8);
-      const fips = c.fips;
-
-      const value = {
-        fips: fips || '',
-        date: new Date(Number(year), Number(month) - 1, Number(date)),
-        positive: coerceNumber(c.positive),
-        negative: coerceNumber(c.negative),
-        pending: coerceNumber(c.pending),
-        tests: coerceNumber(c.total),
-        newPositive: coerceNumber(c.positiveIncrease),
-        newNegative: coerceNumber(c.negativeIncrease),
-        newTests: coerceNumber(c.totalTestResultsIncrease),
-      };
-
-      // Add to our map
-      if (!byFips[fips]) {
-        byFips[fips] = {};
-      }
-      const forFips = byFips[fips];
-      if (forFips[value.date.getTime()]) {
-        console.error(`Multiple rows for for same state fips/date`, c);
-      }
-      forFips[value.date.getTime()] = value;
-    });
-
-    return byFips;
   }
 
   function coerceNumber(value) {
     return value == undefined ? null : Number(value);
   }
 
-  function processCounties(csv, pop) {
+  function processCounties(csv, popMap) {
     // First nest counties by state
     const nestedStates = d3
       .nest()
@@ -422,14 +334,13 @@ import './style.css';
       .entries(csv);
 
     const stateMap = {};
-    const popMap = processPopulations(pop);
 
     nestedStates.forEach((state) => {
       const counties = d3
         .nest()
         .key((k) => k.county)
         .entries(state.values);
-      const byCounty = processGroups(counties, popMap);
+      const byCounty = processGroups(counties, popMap, false);
       stateMap[state.key] = {key: state.key, counties: byCounty};
     });
 
@@ -449,13 +360,12 @@ import './style.css';
     return map;
   }
 
-  function processGroups(groups, popMap, testingMap) {
-    const valueKeys = getValueKeys(!!testingMap);
+  function processGroups(groups, popMap, hasTesting) {
+    const valueKeys = getValueKeys(hasTesting);
 
     groups.forEach((group) => {
       const newRows = [];
       for (let i = 0; i < group.values.length; i++) {
-        const prevRow = group.values[i - 1];
         const row = group.values[i];
         const [year, month, date] = row.date.split('-');
 
@@ -470,32 +380,13 @@ import './style.css';
           date: new Date(Number(year), Number(month) - 1, Number(date)),
           cases: Number(row.cases),
           deaths: Number(row.deaths),
+          newCases: Number(row.newCases),
         };
-        if (prevRow) {
-          parsed.newCases = parsed.cases - prevRow.cases;
-          parsed.newDeaths = parsed.deaths - prevRow.deaths;
-        } else {
-          parsed.newCases = parsed.cases;
-          parsed.newDeaths = parsed.deaths;
-        }
-        newRows.push(parsed);
+        valueKeys.forEach((key) => {
+          parsed[key] = coerceNumber(parsed[key]);
+        });
 
-        // Add in testing data
-        const testing = ((testingMap ? testingMap[parsed.fips] : {}) || {})[parsed.date.getTime()];
-        if (testing) {
-          parsed.positive = testing.positive;
-          parsed.positivePct = testing.positive / testing.tests;
-          parsed.negative = testing.negative;
-          parsed.negativePct = testing.negative / testing.tests;
-          parsed.pending = testing.pending;
-          parsed.pendingPct = testing.pending / testing.tests;
-          parsed.tests = testing.tests;
-          parsed.newPositive = testing.newPositive;
-          parsed.newPositivePct = testing.newPositive / testing.newTests;
-          parsed.newNegative = testing.newNegative;
-          parsed.newNegativePct = testing.newNegative / testing.newTests;
-          parsed.newTests = testing.newTests;
-        }
+        newRows.push(parsed);
 
         // Add population-normalized data
         const pop = popMap[parsed.fips];
@@ -673,6 +564,8 @@ import './style.css';
       daysToShow = 14;
     } else if (filters.time === '1mo') {
       daysToShow = 30;
+    } else if (filters.time === '90d') {
+      daysToShow = 90;
     } else {
       daysToShow = dateDiffInDays(lastCasesDate, firstCasesDate);
     }
@@ -1621,11 +1514,26 @@ import './style.css';
     });
   }
 
+  let loadingCount = 0;
+  function startLoading() {
+    loadingCount++;
+    $('.wrapper').addClass('loading');
+  }
+  function completeLoading() {
+    loadingCount--;
+    if (loadingCount <= 0) {
+      $('.wrapper').removeClass('loading');
+      // Just in case this somehow gets below 0
+      loadingCount = 0;
+    }
+  }
+
   function renderAllStates() {
     render({groups: stateData, overview: usData});
     $('.back-to-states').removeClass('shown');
     hideTooltip();
   }
+
   function renderCounties(state) {
     const countiesForState = countyData[state];
 
@@ -1651,65 +1559,129 @@ import './style.css';
   window.addEventListener('resize', resizeWindow);
 
   function fetchMapData() {
-    if (!mapDataPromise) {
-      mapDataPromise = d3.json('assets/us-counties.topojson').then((us) => {
+    if (!fetchMapData.promise) {
+      fetchMapData.promise = d3.json('assets/us-counties.topojson').then((us) => {
         stateFeatures = topojson.feature(us, us.objects.states).features;
         stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
         countyFeatures = topojson.feature(us, us.objects.counties).features;
       });
     }
-    return mapDataPromise;
+    return fetchMapData.promise;
   }
+
+  function populateStateSelect(stateData) {
+    if (populateStateSelect.populated) {
+      return;
+    }
+    populateStateSelect.populated = true;
+
+    const stateOptions = stateData
+      .slice(0)
+      .sort((a, b) => a.key.localeCompare(b.key))
+      .map((s) => `<option value="${s.key}">${s.key}</option>`)
+      .join('');
+    $('#state-select').html(`<option value="all" selected>All States</option>${stateOptions}`);
+    if (filters.state !== 'all') {
+      $('#state-select').val(filters.state);
+    }
+  }
+
+  const fetchStatePopulationsMemo = memoizeOne(() => {
+    return new Promise((resolve, reject) => {
+      d3.csv('assets/fips-pop-sta.csv')
+        .then((popCsv) => {
+          const popMap = processPopulations(popCsv);
+          resolve(popMap);
+        })
+        .catch(reject);
+    });
+  });
+
+  const fetchCountyPopulationsMemo = memoizeOne(() => {
+    return new Promise((resolve, reject) => {
+      d3.csv('assets/fips-pop-cty.csv')
+        .then((popCsv) => {
+          const popMap = processPopulations(popCsv);
+          resolve(popMap);
+        })
+        .catch(reject);
+    });
+  });
+
+  const fetchStateDataMemo = memoizeOne((timeFilter) => {
+    return new Promise((resolve, reject) => {
+      const file = timeFilter === 'all' ? 'all' : '90d';
+      Promise.all([
+        d3.csv(
+          `https://raw.githubusercontent.com/schnerd/covid-tracker-data/master/data/state/${file}.csv`,
+        ),
+        fetchStatePopulationsMemo(),
+      ])
+        .then(([csv, statePop]) => {
+          processStates(csv, statePop);
+          populateStateSelect(stateData);
+          resolve();
+        })
+        .catch(reject);
+    });
+  });
+
+  const fetchCountyDataMemo = memoizeOne((state, timeFilter) => {
+    return new Promise((resolve, reject) => {
+      // Need to fetch state data first to make sure state => fips mapping is ready
+      fetchStateData()
+        .then(() => {
+          const timeDir = timeFilter === 'all' ? 'all' : '90d';
+          const fips = stateToFipsMap[state];
+          if (!fips) {
+            reject(new Error(`Could not find fips for state ${state}`));
+            return;
+          }
+
+          Promise.all([
+            d3.csv(
+              `https://raw.githubusercontent.com/schnerd/covid-tracker-data/master/data/county/${timeDir}/${fips}.csv`,
+            ),
+            fetchCountyPopulationsMemo(),
+          ])
+            .then(([csv, countyPop]) => {
+              processCounties(csv, countyPop);
+              resolve();
+            })
+            .catch(reject);
+        })
+        .catch(reject);
+    });
+  });
 
   function fetchStateData() {
-    if (!stateDataPromise) {
-      stateDataPromise = Promise.all([
-        d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv'),
-        d3.csv('assets/fips-pop-sta.csv'),
-        d3.json('https://covidtracking.com/api/v1/states/daily.json'),
-      ]).then(([csv, statePop, testingData]) => {
-        processStates(csv, statePop, testingData);
-
-        // Populate state select
-        const stateOptions = stateData
-          .slice(0)
-          .sort((a, b) => a.key.localeCompare(b.key))
-          .map((s) => `<option value="${s.key}">${s.key}</option>`)
-          .join('');
-        $('#state-select').html(`<option value="all" selected>All States</option>${stateOptions}`);
-        if (filters.state !== 'all') {
-          $('#state-select').val(filters.state);
-        }
-      });
-    }
-    return stateDataPromise;
+    return fetchStateDataMemo(filters.time);
   }
 
-  function fetchCountyData() {
-    if (!countyDataPromise) {
-      countyDataPromise = Promise.all([
-        d3.csv('https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv'),
-        d3.csv('assets/fips-pop-cty.csv'),
-      ]).then(([csv, countyPop]) => {
-        processCounties(csv, countyPop);
-      });
-    }
-    return countyDataPromise;
+  function fetchCountyData(state) {
+    return fetchCountyDataMemo(state, filters.time);
   }
 
   function fetchAndRenderStates() {
-    stateDataPromise.then(() => renderAllStates());
+    startLoading();
+    fetchStateData()
+      .then(() => renderAllStates())
+      .finally(() => {
+        completeLoading();
+      });
   }
 
   function fetchAndRenderCounties(state) {
-    Promise.all([stateDataPromise, fetchCountyData()]).then(() => renderCounties(state));
+    startLoading();
+    fetchCountyData(state)
+      .then(() => renderCounties(state))
+      .finally(() => {
+        completeLoading();
+      });
   }
 
-  fetchStateData();
   if (filters.state === 'all') {
     fetchAndRenderStates();
-    // Fetch this in background so its ready immediately when they click on a county
-    setTimeout(fetchCountyData, 200);
   } else {
     fetchAndRenderCounties(filters.state);
   }
