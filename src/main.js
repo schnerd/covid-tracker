@@ -1665,8 +1665,12 @@ import './style.css';
   function fetchAndRenderStates() {
     startLoading();
     fetchStateData()
-      .then(() => renderAllStates())
-      .finally(() => {
+      .then(() => {
+        renderAllStates();
+        completeLoading();
+      })
+      .catch((error) => {
+        throw new Error(error);
         completeLoading();
       });
   }
@@ -1674,8 +1678,12 @@ import './style.css';
   function fetchAndRenderCounties(state) {
     startLoading();
     fetchCountyData(state)
-      .then(() => renderCounties(state))
-      .finally(() => {
+      .then(() => {
+        renderCounties(state);
+        completeLoading();
+      })
+      .catch((error) => {
+        throw new Error(error);
         completeLoading();
       });
   }
