@@ -133,6 +133,7 @@ a:visited {
 @media (min-width: 600px) {
   .filters {
     display: flex;
+    flex-direction: row;
     align-items: center;
     flex-wrap: wrap;
 
@@ -625,4 +626,4 @@ body.touch #tooltip.shown {
 }
 
 
-/*# sourceMappingURL=main.752a46277d26cd705ad6.css.map*/
+/*# sourceMappingURL=main.1b21671269d8dab5a8b7.css.map*/
