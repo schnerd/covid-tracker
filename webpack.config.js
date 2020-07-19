@@ -1,6 +1,5 @@
 /* eslint-env node */
 const path = require('path');
-const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const {CleanWebpackPlugin} = require('clean-webpack-plugin');
@@ -53,13 +52,7 @@ module.exports = {
   },
   optimization: {
     moduleIds: 'hashed',
-    minimizer: devMode
-      ? []
-      : [
-          new UglifyJsPlugin({
-            sourceMap: true,
-          }),
-        ],
+    minimize: !devMode,
     splitChunks: {
       cacheGroups: {
         vendor: {
