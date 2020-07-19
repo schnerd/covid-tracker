@@ -1,4 +1,23 @@
-import * as d3 from 'd3';
+import {nest as d3nest} from 'd3-collection';
+import {stack as d3stack, line as d3line, curveMonotoneX as d3curveMonotoneX} from 'd3-shape';
+import {format as d3format} from 'd3-format';
+import {json as d3json, csv as d3csv} from 'd3-fetch';
+import {
+  mean as d3mean,
+  sum as d3sum,
+  min as d3min,
+  range as d3range,
+  extent as d3extent,
+  bisectLeft as d3bisectLeft,
+} from 'd3-array';
+import {select as d3select, mouse as d3mouse, event as d3event} from 'd3-selection';
+import {axisLeft as d3axisLeft} from 'd3-axis';
+import {
+  scaleBand as d3scaleBand,
+  scaleLog as d3scaleLog,
+  scaleLinear as d3scaleLinear,
+} from 'd3-scale';
+import {geoAlbersUsa as d3geoAlbersUsa, geoPath as d3geoPath} from 'd3-geo';
 import scaleCluster from 'd3-scale-cluster';
 import memoizeOne from 'memoize-one';
 import throttle from 'lodash/throttle';
@@ -8,6 +27,7 @@ import $ from 'jquery';
 import * as history from 'history';
 import * as topojson from 'topojson-client';
 import './style.css';
+import 'd3-transition';
 
 (function () {
   const isTouchDevice = 'ontouchstart' in document.documentElement;
@@ -301,8 +321,7 @@ import './style.css';
   }
 
   function processStates(csv, popMap) {
-    const nestedStates = d3
-      .nest()
+    const nestedStates = d3nest()
       .key((k) => k.state)
       .entries(csv);
 
@@ -328,16 +347,14 @@ import './style.css';
 
   function processCounties(csv, popMap) {
     // First nest counties by state
-    const nestedStates = d3
-      .nest()
+    const nestedStates = d3nest()
       .key((k) => k.state)
       .entries(csv);
 
     const stateMap = {};
 
     nestedStates.forEach((state) => {
-      const counties = d3
-        .nest()
+      const counties = d3nest()
         .key((k) => k.county)
         .entries(state.values);
       const byCounty = processGroups(counties, popMap, false);
@@ -471,7 +488,7 @@ import './style.css';
             arr.push(0);
           }
           // Store today's moving average as the mean of our moving average window
-          maValues[maKey(key)] = d3.mean(arr);
+          maValues[maKey(key)] = d3mean(arr);
         });
 
         // For dates that will be visualized, push a value into the newRows array
@@ -627,25 +644,25 @@ import './style.css';
         pop,
         label: group.key,
         // New cases/deaths over last N days
-        cases: d3.sum(values, (v) => v.newCases),
-        deaths: d3.sum(values, (v) => v.newDeaths),
+        cases: d3sum(values, (v) => v.newCases),
+        deaths: d3sum(values, (v) => v.newDeaths),
         // Average of new daily cases/deahts over last N days
-        newCases: d3.mean(values, (v) => v.newCases),
-        newDeaths: d3.mean(values, (v) => v.newDeaths),
+        newCases: d3mean(values, (v) => v.newCases),
+        newDeaths: d3mean(values, (v) => v.newDeaths),
       };
 
       if (hasTests) {
-        value.tests = d3.sum(values, (v) => v.newTests);
-        value.positive = d3.sum(values, (v) => v.newPositive);
+        value.tests = d3sum(values, (v) => v.newTests);
+        value.positive = d3sum(values, (v) => v.newPositive);
         value.positivePct = value.positive / value.tests;
-        value.negative = d3.sum(values, (v) => v.newNegative);
+        value.negative = d3sum(values, (v) => v.newNegative);
         value.negativePct = value.negative / value.tests;
-        value.pending = d3.sum(values, (v) => v.newPending);
+        value.pending = d3sum(values, (v) => v.newPending);
         value.pendingPct = value.pending / value.tests;
-        value.newTests = d3.mean(values, (v) => v.newTests);
-        value.newPositive = d3.mean(values, (v) => v.newPositive);
+        value.newTests = d3mean(values, (v) => v.newTests);
+        value.newPositive = d3mean(values, (v) => v.newPositive);
         value.newPositivePct = value.newPositive / value.newTests;
-        value.newNegative = d3.mean(values, (v) => v.newNegative);
+        value.newNegative = d3mean(values, (v) => v.newNegative);
         value.newNegativePct = value.newNegative / value.newTests;
       }
 
@@ -689,20 +706,19 @@ import './style.css';
 
     const allowDrilldown = !isCounties;
 
-    const $map = d3.select('#svg-map');
+    const $map = d3select('#svg-map');
     const {width, height} = $map.node().getBoundingClientRect();
     const mapWidth = width;
     const mapHeight = height;
 
-    const projection = d3
-      .geoAlbersUsa()
+    const projection = d3geoAlbersUsa()
       .translate([mapWidth / 2, mapHeight / 2])
       .scale(mapWidth);
-    const path = d3.geoPath().projection(projection);
+    const path = d3geoPath().projection(projection);
 
     const fieldTitle = mapDataPointLabels[field];
     const timeTitle = timeLabels[filters.time];
-    d3.select('#map-title').text(`Map of ${fieldTitle}, ${timeTitle}`);
+    d3select('#map-title').text(`Map of ${fieldTitle}, ${timeTitle}`);
 
     const $g = $map.select('#map-g').attr('width', mapWidth).attr('height', mapHeight);
 
@@ -720,8 +736,8 @@ import './style.css';
       : stateFeatures;
 
     const hasMapData = Boolean(stateFeaturesFiltered.length);
-    d3.select('#map-no-data').classed('shown', !hasMapData);
-    d3.select('#viz-map-header').style('opacity', hasMapData ? 1 : 0);
+    d3select('#map-no-data').classed('shown', !hasMapData);
+    d3select('#viz-map-header').style('opacity', hasMapData ? 1 : 0);
 
     const joinedData = aggMapData(
       groups,
@@ -738,7 +754,7 @@ import './style.css';
     if (domain.length === 0) {
       domain.push(1);
     }
-    const min = d3.min(domain);
+    const min = d3min(domain);
     const colorScale = scaleCluster().domain(domain).range(mapColors);
     const clusters = colorScale.clusters();
     renderMapLegend(clusters, min);
@@ -798,13 +814,13 @@ import './style.css';
     const $features = isCounties ? $counties : $states;
 
     function onMouseEnter(d) {
-      const evt = d3.event;
+      const evt = d3event;
       if (d.label) {
         showMapTooltip({value: d, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
       }
     }
 
-    const $backdrop = d3.select('#map-backdrop');
+    const $backdrop = d3select('#map-backdrop');
     $backdrop.attr('width', width).attr('height', height);
     $backdrop.on('click', () => {
       if (isCounties) {
@@ -816,7 +832,7 @@ import './style.css';
       $features
         .on('click', (d) => {
           // Dont let this bubble up to document click
-          d3.event.stopPropagation();
+          d3event.stopPropagation();
           onMouseEnter(d);
         })
         .on('mouseleave', () => {
@@ -856,7 +872,7 @@ import './style.css';
   }
 
   function renderMapLegend(clusters, min) {
-    const $legend = d3.select('#map-legend');
+    const $legend = d3select('#map-legend');
     $legend
       .selectAll('.map-legend-item')
       .data([0, min].concat(clusters))
@@ -877,7 +893,7 @@ import './style.css';
   }
 
   function renderOverview(data, options) {
-    const $overview = d3.select('#svg-overview');
+    const $overview = d3select('#svg-overview');
     const {width, height} = $overview.node().getBoundingClientRect();
 
     const $cell = $overview.select('g.cell');
@@ -908,7 +924,7 @@ import './style.css';
   function renderGrid(data, options) {
     const {field, daysToShow} = options;
 
-    const $svg = d3.select('#grid');
+    const $svg = d3select('#grid');
     // Make sure  we're starting fresh
     $svg.selectAll('*').remove();
     $svg.attr('class', filters.consistentY ? 'consistent-y' : '');
@@ -944,7 +960,7 @@ import './style.css';
     groups.forEach((g) => {
       if (field.indexOf('new') === 0) {
         // For daily new cases / deaths, sort by the sum of the data currently being shown
-        g.sortVal = d3.sum(g.values, (v) => v[field]);
+        g.sortVal = d3sum(g.values, (v) => v[field]);
       } else {
         // Otherwise sort by the last shown cumulative value
         const lastVal = findLast(g.values, (v) => v[field] != undefined);
@@ -957,7 +973,7 @@ import './style.css';
     const $rows = $svg
       .attr('viewBox', [0, 0, winWidth, totalHeight])
       .selectAll('g.row')
-      .data(d3.range(numRows))
+      .data(d3range(numRows))
       .enter()
       .append('g')
       .attr('class', 'row')
@@ -967,8 +983,8 @@ import './style.css';
     $rows.each(function (row) {
       const lastItemNumber = (row + 1) * numCols;
       const numColsForRow = lastItemNumber > groups.length ? groups.length % numCols : numCols;
-      const range = d3.range(numColsForRow).map((i) => ({row, col: i}));
-      d3.select(this)
+      const range = d3range(numColsForRow).map((i) => ({row, col: i}));
+      d3select(this)
         .selectAll('g.cell')
         .data(range)
         .enter()
@@ -1010,15 +1026,11 @@ import './style.css';
     } = options;
     const {groups, extents} = data;
 
-    const yScaleType = filters.useLog ? 'scaleLog' : 'scaleLinear';
+    const yScaleType = filters.useLog ? d3scaleLog : d3scaleLinear;
 
-    const xScale = d3
-      .scaleBand()
-      .domain(d3.range(datesToShow.length))
-      [
-        // eslint-disable-next-line no-unexpected-multiline
-        daysToShow >= 90 ? 'range' : 'rangeRound'
-      ]([0, chartWidth])
+    const xScale = d3scaleBand()
+      .domain(d3range(datesToShow.length))
+      [daysToShow >= 90 ? 'range' : 'rangeRound']([0, chartWidth])
       .paddingInner(Math.floor((100 * (barPad * daysToShow)) / chartWidth) / 100)
       .paddingOuter(0);
     const barWidth = xScale.bandwidth();
@@ -1037,7 +1049,7 @@ import './style.css';
           domain[0] /= 10;
         }
       }
-      return d3[yScaleType]().domain(domain).range([chartHeight, 0]).nice();
+      return yScaleType().domain(domain).range([chartHeight, 0]).nice();
     }
 
     function makeAxis(scale) {
@@ -1055,8 +1067,7 @@ import './style.css';
       while (scale.ticks(numTicks).length > 5) {
         numTicks--;
       }
-      return d3
-        .axisLeft(scale)
+      return d3axisLeft(scale)
         .ticks(numTicks)
         .tickSizeInner(-chartWidth)
         .tickSizeOuter(0)
@@ -1072,7 +1083,7 @@ import './style.css';
     // Fill each cell with a chart
     let counter = 0;
     $cells.each(function (d, index) {
-      const $cell = d3.select(this);
+      const $cell = d3select(this);
       const data = groups[index];
       if (!data) {
         return;
@@ -1092,12 +1103,12 @@ import './style.css';
       let cellYScale = yScale;
       let cellYAxis = yAxis;
       if (!filters.consistentY) {
-        let extent = d3.extent(values, (d) => d[field]);
+        let extent = d3extent(values, (d) => d[field]);
         // Account for moving average values in extent
         if (fieldHasMovingAverage[field]) {
           const maField = maKey(field);
-          const maExtent = d3.extent(values, (d) => d[maField]);
-          extent = d3.extent(extent.concat(maExtent));
+          const maExtent = d3extent(values, (d) => d[maField]);
+          extent = d3extent(extent.concat(maExtent));
         }
         cellYScale = makeYScale(extent);
         cellYAxis = makeAxis(cellYScale);
@@ -1116,7 +1127,7 @@ import './style.css';
         stackFields = [field];
       }
 
-      const stack = d3.stack().keys(stackFields)(values);
+      const stack = d3stack().keys(stackFields)(values);
       const $layers = $cell
         .selectAll('g.layer')
         .data(stack, (d) => d.key)
@@ -1148,14 +1159,13 @@ import './style.css';
 
       if (fieldHasMovingAverage[field]) {
         const xOffset = barWidth / 2;
-        const line = d3
-          .line()
+        const line = d3line()
           .x((d, i) => Math.round(xScale(i) + xOffset))
           .y((d) => {
             const y = Math.min(Math.floor(cellYScale(d[maKey(field)])), chartHeight);
             return Number.isNaN(y) ? chartHeight : y;
           })
-          .curve(d3.curveMonotoneX);
+          .curve(d3curveMonotoneX);
 
         $cell.append('path').attr('class', 'ma-line').datum(values).attr('d', line);
       } else {
@@ -1169,10 +1179,10 @@ import './style.css';
         .attr('class', 'crosshair crosshair-hidden');
 
       function onMouseMove() {
-        const evt = d3.event;
-        const mouse = d3.mouse(this);
+        const evt = d3event;
+        const mouse = d3mouse(this);
         const xPos = mouse[0];
-        const bisectIndex = d3.bisectLeft(barXMidpoints, xPos);
+        const bisectIndex = d3bisectLeft(barXMidpoints, xPos);
         const left = barXMidpoints[bisectIndex - 1];
         const right = barXMidpoints[bisectIndex];
         const index =
@@ -1205,7 +1215,7 @@ import './style.css';
       if (isTouchDevice) {
         $hover.on('click', () => {
           // Dont let this bubble up to document click
-          d3.event.stopPropagation();
+          d3event.stopPropagation();
           onMouseMove.call(this);
         });
       } else {
@@ -1440,13 +1450,13 @@ import './style.css';
     return abbrev ? `${n}${abbrev}` : String(n);
   }
 
-  const tooltipFmtPer100k = d3.format(',.1f');
-  const tooltipFmtPer100kSmall = d3.format(',.2f');
+  const tooltipFmtPer100k = d3format(',.1f');
+  const tooltipFmtPer100kSmall = d3format(',.2f');
   function formatPer100kValue(n) {
     return n >= 1 ? tooltipFmtPer100k(n) : tooltipFmtPer100kSmall(n);
   }
 
-  const tooltipFmt = d3.format(',d');
+  const tooltipFmt = d3format(',d');
   function formatTooltipValue(n) {
     return tooltipFmt(n);
   }
@@ -1455,7 +1465,7 @@ import './style.css';
     return formatNumNice(n, 2);
   }
 
-  const pctFmt = d3.format('.1%');
+  const pctFmt = d3format('.1%');
   function formatTooltipPct(n) {
     return n != undefined ? `(${pctFmt(n)})` : '';
   }
@@ -1567,7 +1577,7 @@ import './style.css';
 
   function fetchMapData() {
     if (!fetchMapData.promise) {
-      fetchMapData.promise = d3.json('assets/us-counties.topojson').then((us) => {
+      fetchMapData.promise = d3json('assets/us-counties.topojson').then((us) => {
         stateFeatures = topojson.feature(us, us.objects.states).features;
         stateBorders = topojson.mesh(us, us.objects.states, (a, b) => a !== b);
         countyFeatures = topojson.feature(us, us.objects.counties).features;
@@ -1595,7 +1605,7 @@ import './style.css';
 
   const fetchStatePopulationsMemo = memoizeOne(() => {
     return new Promise((resolve, reject) => {
-      d3.csv('assets/fips-pop-sta.csv')
+      d3csv('assets/fips-pop-sta.csv')
         .then((popCsv) => {
           const popMap = processPopulations(popCsv);
           resolve(popMap);
@@ -1606,7 +1616,7 @@ import './style.css';
 
   const fetchCountyPopulationsMemo = memoizeOne(() => {
     return new Promise((resolve, reject) => {
-      d3.csv('assets/fips-pop-cty.csv')
+      d3csv('assets/fips-pop-cty.csv')
         .then((popCsv) => {
           const popMap = processPopulations(popCsv);
           resolve(popMap);
@@ -1619,7 +1629,7 @@ import './style.css';
     return new Promise((resolve, reject) => {
       const file = timeFilter === 'all' ? 'all' : '90d';
       Promise.all([
-        d3.csv(
+        d3csv(
           `https://raw.githubusercontent.com/schnerd/covid-tracker-data/master/data/state/${file}.csv`,
         ),
         fetchStatePopulationsMemo(),
@@ -1646,7 +1656,7 @@ import './style.css';
           }
 
           Promise.all([
-            d3.csv(
+            d3csv(
               `https://raw.githubusercontent.com/schnerd/covid-tracker-data/master/data/county/${timeDir}/${fips}.csv`,
             ),
             fetchCountyPopulationsMemo(),
@@ -1677,7 +1687,7 @@ import './style.css';
         completeLoading();
       })
       .catch((error) => {
-        throw new Error(error);
+        console.error(error);
         completeLoading();
       });
   }
@@ -1690,7 +1700,7 @@ import './style.css';
         completeLoading();
       })
       .catch((error) => {
-        throw new Error(error);
+        console.error(error);
         completeLoading();
       });
   }
