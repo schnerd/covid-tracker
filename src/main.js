@@ -1015,9 +1015,12 @@ import './style.css';
     const xScale = d3
       .scaleBand()
       .domain(d3.range(datesToShow.length))
-      .rangeRound([0, chartWidth])
-      .paddingInner((barPad * daysToShow) / chartWidth)
-      .paddingOuter((barPad * 5) / chartWidth);
+      [
+        // eslint-disable-next-line no-unexpected-multiline
+        daysToShow >= 90 ? 'range' : 'rangeRound'
+      ]([0, chartWidth])
+      .paddingInner(Math.floor((100 * (barPad * daysToShow)) / chartWidth) / 100)
+      .paddingOuter(0);
     const barWidth = xScale.bandwidth();
 
     const barXMidpoints = datesToShow.map((d, i) => {
@@ -1135,11 +1138,11 @@ import './style.css';
         .attr('width', barWidth)
         .attr('x', (d, i) => xScale(i))
         .attr('y', (d) => {
-          const y = Math.floor(cellYScale(d[1]));
+          const y = cellYScale(d[1]);
           return Number.isNaN(y) ? chartHeight : y;
         })
         .attr('height', (d) => {
-          const y = Math.max(Math.ceil(chartHeight - cellYScale(d[1] - d[0])), 0);
+          const y = Math.max(chartHeight - cellYScale(d[1] - d[0]), 0);
           return Number.isNaN(y) ? 0 : y;
         });
 
