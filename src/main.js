@@ -607,7 +607,6 @@ import 'd3-transition';
 
     const options = {
       field,
-      daysToShow,
       datesToShow,
       isCounties,
       stateFips,
@@ -922,7 +921,7 @@ import 'd3-transition';
   }
 
   function renderGrid(data, options) {
-    const {field, daysToShow} = options;
+    const {field, datesToShow} = options;
 
     const $svg = d3select('#grid');
     // Make sure  we're starting fresh
@@ -946,7 +945,7 @@ import 'd3-transition';
     const yAxisWidth = useLarge ? 40 : 30;
     const xAxisHeight = useLarge ? 20 : 14;
     const winWidth = window.innerWidth;
-    const barPad = daysToShow > 10 ? 1 : 2;
+    const barPad = datesToShow.length > 10 ? 1 : 2;
 
     const colWidth = chartWidth + chartXPadding;
     const rowHeight = chartHeight + xAxisHeight + chartYPadding;
@@ -1015,7 +1014,6 @@ import 'd3-transition';
   function renderCharts($svg, data, options) {
     const {
       field,
-      daysToShow,
       datesToShow,
       allowDrilldown,
       chartWidth,
@@ -1030,8 +1028,8 @@ import 'd3-transition';
 
     const xScale = d3scaleBand()
       .domain(d3range(datesToShow.length))
-      [daysToShow >= 90 ? 'range' : 'rangeRound']([0, chartWidth])
-      .paddingInner(Math.floor((100 * (barPad * daysToShow)) / chartWidth) / 100)
+      [datesToShow.length >= 90 ? 'range' : 'rangeRound']([0, chartWidth])
+      .paddingInner(Math.floor((100 * (barPad * datesToShow.length)) / chartWidth) / 100)
       .paddingOuter(0);
     const barWidth = xScale.bandwidth();
 
@@ -1255,18 +1253,14 @@ import 'd3-transition';
       }
     });
 
-    // Add start dates
-    const endDate = last(groups[0].values).date;
-    const startDate = new Date(endDate);
-    startDate.setDate(startDate.getDate() - daysToShow + 1);
-
+    // Add X date ticks
     $cells
       .append('text')
       .attr('class', 'x-tick x-tick-start')
       .attr('text-anchor', 'start')
       .attr('x', 0)
       .attr('y', chartHeight + 4)
-      .text(formatXDate(startDate));
+      .text(formatXDate(datesToShow[0]));
 
     $cells
       .append('text')
@@ -1274,7 +1268,7 @@ import 'd3-transition';
       .attr('text-anchor', 'end')
       .attr('x', chartWidth)
       .attr('y', chartHeight + 4)
-      .text(formatXDate(endDate));
+      .text(formatXDate(last(datesToShow)));
   }
 
   function showMapTooltip(options) {
