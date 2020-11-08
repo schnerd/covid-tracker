@@ -75,7 +75,6 @@ import 'd3-transition';
     deaths: 'Total Deaths',
     tests: 'Total Tests',
     positive: 'Total Positive',
-    pending: 'Total Pending',
     negative: 'Total Negative',
     newCases: 'New Cases',
     newDeaths: 'New Deaths',
@@ -310,8 +309,6 @@ import 'd3-transition';
       valueKeys.push(
         'positive',
         'negative',
-        'pending',
-        'tests',
         'newPositive',
         'newNegative',
         'newTests',
@@ -651,17 +648,15 @@ import 'd3-transition';
       };
 
       if (hasTests) {
-        value.tests = d3sum(values, (v) => v.newTests);
         value.positive = d3sum(values, (v) => v.newPositive);
-        value.positivePct = value.positive / value.tests;
         value.negative = d3sum(values, (v) => v.newNegative);
+        value.tests = value.positive + value.negative;
+        value.positivePct = value.positive / value.tests;
         value.negativePct = value.negative / value.tests;
-        value.pending = d3sum(values, (v) => v.newPending);
-        value.pendingPct = value.pending / value.tests;
-        value.newTests = d3mean(values, (v) => v.newTests);
         value.newPositive = d3mean(values, (v) => v.newPositive);
-        value.newPositivePct = value.newPositive / value.newTests;
         value.newNegative = d3mean(values, (v) => v.newNegative);
+        value.newTests = value.newPositive + value.newNegative;
+        value.newPositivePct = value.newPositive / value.newTests;
         value.newNegativePct = value.newNegative / value.newTests;
       }
 
@@ -1357,8 +1352,6 @@ import 'd3-transition';
       dataPoints = [
         {key: 'positive', color: 'primary1', pct: value.positivePct},
         {key: 'negative', color: 'primary2', pct: value.negativePct},
-        {key: 'pending', pct: value.pendingPct},
-        {key: 'tests'},
         {key: 'cases'},
         {key: 'deaths'},
       ];
@@ -1366,7 +1359,6 @@ import 'd3-transition';
       dataPoints = [
         {key: 'newPositive', color: 'primary1', pct: value.newPositivePct},
         {key: 'newNegative', color: 'primary2', pct: value.newNegativePct},
-        {key: 'newTests'},
         {key: 'newCases'},
         {key: 'newDeaths'},
       ];
