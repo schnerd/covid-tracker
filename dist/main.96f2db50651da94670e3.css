@@ -436,10 +436,12 @@ a:visited {
   opacity: 0;
 }
 
-.layer-1 .bar {
+.layer-1 .bar,
+.layer-1 .area {
   fill: var(--primary1);
 }
-.layer-2 .bar {
+.layer-2 .bar,
+.layer-2 .area {
   fill: var(--primary2);
 }
 .chart-line {
@@ -628,4 +630,4 @@ body.touch #tooltip.shown {
 }
 
 
-/*# sourceMappingURL=main.d66d5a22bd768859fef3.css.map*/
+/*# sourceMappingURL=main.96f2db50651da94670e3.css.map*/
