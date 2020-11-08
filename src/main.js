@@ -1171,7 +1171,7 @@ import 'd3-transition';
           });
       }
       // If there are multiple stack fields, use an area chart
-      else if (!fieldHasMovingAverage[field]) {
+      else if (stackFields.length > 1) {
         const area = d3area()
           .x((d, i) => xScale(i))
           .y0(d => cellYScale(Math.max(d[0] || 0, 0)))
