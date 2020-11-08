@@ -1127,47 +1127,57 @@ import 'd3-transition';
         stackFields = [field];
       }
 
-      const stack = d3stack().keys(stackFields)(values);
-      const $layers = $cell
-        .selectAll('g.layer')
-        .data(stack, (d) => d.key)
-        .enter()
-        .append('g')
-        .attr('class', (d, i) => {
-          return `layer layer-${i + 1} layer-${d.key}`;
-        });
-
-      $layers
-        .selectAll('.bar')
-        .data(
-          (l) => l,
-          (d) => String(d.data.date.getTime()),
-        )
-        .enter()
-        .append('rect')
-        .attr('class', 'bar')
-        .attr('width', barWidth)
-        .attr('x', (d, i) => xScale(i))
-        .attr('y', (d) => {
-          const y = cellYScale(d[1]);
-          return Number.isNaN(y) ? chartHeight : y;
-        })
-        .attr('height', (d) => {
-          const y = Math.max(chartHeight - cellYScale(d[1] - d[0]), 0);
-          return Number.isNaN(y) ? 0 : y;
-        });
-
-      if (fieldHasMovingAverage[field]) {
+      function renderLine(yProperty, classes) {
         const xOffset = barWidth / 2;
         const line = d3line()
           .x((d, i) => Math.round(xScale(i) + xOffset))
           .y((d) => {
-            const y = Math.min(Math.floor(cellYScale(d[maKey(field)])), chartHeight);
+            const y = Math.min(Math.floor(cellYScale(d[yProperty])), chartHeight);
             return Number.isNaN(y) ? chartHeight : y;
           })
           .curve(d3curveMonotoneX);
 
-        $cell.append('path').attr('class', 'ma-line').datum(values).attr('d', line);
+        $cell.append('path').attr('class', classes).datum(values).attr('d', line);
+      }
+
+      // Only render bars if there's enough room for them
+      if (xScale.bandwidth() >= 1) {
+        const stack = d3stack().keys(stackFields)(values);
+        const $layers = $cell
+          .selectAll('g.layer')
+          .data(stack, (d) => d.key)
+          .enter()
+          .append('g')
+          .attr('class', (d, i) => {
+            return `layer layer-${i + 1} layer-${d.key}`;
+          });
+
+        $layers
+          .selectAll('.bar')
+          .data(
+            (l) => l,
+            (d) => String(d.data.date.getTime()),
+          )
+          .enter()
+          .append('rect')
+          .attr('class', 'bar')
+          .attr('width', barWidth)
+          .attr('x', (d, i) => xScale(i))
+          .attr('y', (d) => {
+            const y = cellYScale(d[1]);
+            return Number.isNaN(y) ? chartHeight : y;
+          })
+          .attr('height', (d) => {
+            const y = Math.max(chartHeight - cellYScale(d[1] - d[0]), 0);
+            return Number.isNaN(y) ? 0 : y;
+          });
+      } else if (!fieldHasMovingAverage[field]) {
+        // If there's not enough room for bars, and there's no moving-average data, render a line chart instead
+        renderLine(field, 'chart-line');
+      }
+
+      if (fieldHasMovingAverage[field]) {
+        renderLine(maKey(field), 'chart-line ma-line');
       } else {
         $cell.selectAll('.ma-line').remove();
       }
