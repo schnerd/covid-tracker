@@ -1,5 +1,5 @@
 import {nest as d3nest} from 'd3-collection';
-import {stack as d3stack, line as d3line, curveMonotoneX as d3curveMonotoneX} from 'd3-shape';
+import {stack as d3stack, line as d3line, curveMonotoneX as d3curveMonotoneX, area as d3area} from 'd3-shape';
 import {format as d3format} from 'd3-format';
 import {json as d3json, csv as d3csv} from 'd3-fetch';
 import {
@@ -1138,18 +1138,18 @@ import 'd3-transition';
         $cell.append('path').attr('class', classes).datum(values).attr('d', line);
       }
 
-      // Only render bars if there's enough room for them
-      if (xScale.bandwidth() >= 1) {
-        const stack = d3stack().keys(stackFields)(values);
-        const $layers = $cell
-          .selectAll('g.layer')
-          .data(stack, (d) => d.key)
-          .enter()
-          .append('g')
-          .attr('class', (d, i) => {
-            return `layer layer-${i + 1} layer-${d.key}`;
-          });
+      const stack = d3stack().keys(stackFields)(values);
+      const $layers = $cell
+        .selectAll('g.layer')
+        .data(stack, (d) => d.key)
+        .enter()
+        .append('g')
+        .attr('class', (d, i) => {
+          return `layer layer-${i + 1} layer-${d.key}`;
+        });
 
+      // Render bars if we're not looking at "All" data
+      if (filters.time !== 'all') {
         $layers
           .selectAll('.bar')
           .data(
@@ -1169,11 +1169,24 @@ import 'd3-transition';
             const y = Math.max(chartHeight - cellYScale(d[1] - d[0]), 0);
             return Number.isNaN(y) ? 0 : y;
           });
-      } else if (!fieldHasMovingAverage[field]) {
-        // If there's not enough room for bars, and there's no moving-average data, render a line chart instead
+      }
+      // If there are multiple stack fields, use an area chart
+      else if (!fieldHasMovingAverage[field]) {
+        const area = d3area()
+          .x((d, i) => xScale(i))
+          .y0(d => cellYScale(Math.max(d[0] || 0, 0)))
+          .y1(d => cellYScale(Math.max(d[1] || 0, 0)))
+        $layers
+          .append('path')
+          .attr('class', 'area')
+          .attr('d', area);
+      }
+      // Fall back to line chart (unless there's already a moving avg line)
+      else if(!fieldHasMovingAverage[field]) {
         renderLine(field, 'chart-line');
       }
 
+      // Render the moving average line
       if (fieldHasMovingAverage[field]) {
         renderLine(maKey(field), 'chart-line ma-line');
       } else {
