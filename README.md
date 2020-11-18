@@ -14,9 +14,9 @@ Testing data from The COVID Tracking project: https://covidtracking.com/about-da
 ## Development
 
 ```
-yarn dev
+npm run dev
 ```
 
 Make changes to the files in /src. The files in the root of the project are the final versions that will be visible on github pages.
 
-Deploy with `yarn deploy`
+Deploy with `npm run deploy`

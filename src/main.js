@@ -167,7 +167,7 @@ import 'd3-transition';
     field: 'newCases',
     time: '14d',
     useLog: false,
-    per100k: false,
+    per100k: true,
     consistentY: true,
   };
 
@@ -213,24 +213,15 @@ import 'd3-transition';
               filters.field = v;
               $('#field-select').val(v);
 
-              isTestingData = filters.field === 'tests' || filters.field === 'newTests';
+              isTestingData = v === 'tests' || v === 'newTests';
               if (isTestingData) {
                 // Disable useLog if switching to testing data
                 filters.useLog = false;
                 $('#cb-use-log-scale').prop('checked', false);
                 qs[filterKeys.useLog] = '0';
-
-                $('.testing-legend').show();
                 $('#filter-use-log-scale').hide();
               } else {
-                $('.testing-legend').hide();
                 $('#filter-use-log-scale').show();
-              }
-              if (v === 'newCases' || v === 'newDeaths') {
-                $('.ma-legend .legend-field-label').text(dataPointLabels[v]);
-                $('.ma-legend').show();
-              } else {
-                $('.ma-legend').hide();
               }
             }
             break;
@@ -609,6 +600,7 @@ import 'd3-transition';
       stateFips,
     };
 
+    renderLegend();
     renderOverview(overviewData, options);
     renderGrid(gridData, options);
 
@@ -710,7 +702,10 @@ import 'd3-transition';
       .scale(mapWidth);
     const path = d3geoPath().projection(projection);
 
-    const fieldTitle = mapDataPointLabels[field];
+    let fieldTitle = mapDataPointLabels[field];
+    if (filters.per100k) {
+      fieldTitle += ' per 100K';
+    }
     const timeTitle = timeLabels[filters.time];
     d3select('#map-title').text(`Map of ${fieldTitle}, ${timeTitle}`);
 
@@ -884,6 +879,23 @@ import 'd3-transition';
       })
       .select('.map-legend-item-label')
       .text((d) => formatMapLegendTick(d));
+  }
+
+  function renderLegend() {
+    const field = filters.field;
+    if (field.toLowerCase().indexOf('tests') >= 0) {
+        $('.testing-legend').show();
+    } else {
+        $('.testing-legend').hide();
+    }
+    if (field === 'newCases' || field === 'newDeaths') {
+      $('.ma-legend .legend-field-label').text(
+        dataPointLabels[field] + (filters.per100k ? ' per 100K' : '')
+      );
+      $('.ma-legend').show();
+    } else {
+      $('.ma-legend').hide();
+    }
   }
 
   function renderOverview(data, options) {
