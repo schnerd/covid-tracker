@@ -1374,8 +1374,13 @@ import 'd3-transition';
         {key: 'newCases'},
         {key: 'newDeaths'},
       ];
+    } else if (filters.field.indexOf('new') === 0) {
+      dataPoints = ['newCases', 'newDeaths'].map((k) => ({
+        key: k,
+        color: k === field ? 'primary1' : null,
+      }));
     } else {
-      dataPoints = ['cases', 'deaths', 'newCases', 'newDeaths'].map((k) => ({
+      dataPoints = ['cases', 'deaths'].map((k) => ({
         key: k,
         color: k === field ? 'primary1' : null,
       }));
