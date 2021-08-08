@@ -73,7 +73,6 @@ import 'd3-transition';
   let tooltipValue = null;
   let tooltipShown = null;
   let tooltipHideTimer = null;
-  let isTestingData = false;
 
   ///////////////
   // Constants //
@@ -82,12 +81,10 @@ import 'd3-transition';
   const dataPointLabels = {
     cases: 'Total Cases',
     deaths: 'Total Deaths',
-    tests: 'Total Tests',
     positive: 'Total Positive',
     negative: 'Total Negative',
     newCases: 'New Cases',
     newDeaths: 'New Deaths',
-    newTests: 'New Tests',
     newPositive: 'New Positive',
     newNegative: 'New Negative',
     pop: 'Est. Population',
@@ -204,17 +201,6 @@ import 'd3-transition';
             if (dataPointLabels[v]) {
               filters.field = v;
               $('#field-select').val(v);
-
-              isTestingData = v === 'tests' || v === 'newTests';
-              if (isTestingData) {
-                // Disable useLog if switching to testing data
-                filters.useLog = false;
-                $('#cb-use-log-scale').prop('checked', false);
-                qs[filterKeys.useLog] = '0';
-                $('#filter-use-log-scale').hide();
-              } else {
-                $('#filter-use-log-scale').show();
-              }
             }
             break;
           }
@@ -286,18 +272,8 @@ import 'd3-transition';
   // Data Processing //
   /////////////////////
 
-  function getValueKeys(withTesting) {
-    const valueKeys = ['cases', 'deaths', 'newCases', 'newDeaths'];
-    if (withTesting) {
-      valueKeys.push(
-        'positive',
-        'negative',
-        'newPositive',
-        'newNegative',
-        'newTests',
-      );
-    }
-    return valueKeys;
+  function getValueKeys() {
+    return ['cases', 'deaths', 'newCases', 'newDeaths'];
   }
 
   function processStates(csv, popMap) {
@@ -357,8 +333,8 @@ import 'd3-transition';
     return map;
   }
 
-  function processGroups(groups, popMap, hasTesting) {
-    const valueKeys = getValueKeys(hasTesting);
+  function processGroups(groups, popMap) {
+    const valueKeys = getValueKeys();
 
     groups.forEach((group) => {
       const newRows = [];
@@ -409,8 +385,8 @@ import 'd3-transition';
     return groups;
   }
 
-  function filterData(groups, datesToShow, hasTestingData) {
-    const valueKeys = getValueKeys(hasTestingData);
+  function filterData(groups, datesToShow) {
+    const valueKeys = getValueKeys();
     const allValueKeys = valueKeys.concat(valueKeys.map(per100kKey));
 
     // Keys for which to compute moving averages
@@ -573,17 +549,8 @@ import 'd3-transition';
       datesToShow.unshift(nextDate);
     }
 
-    if (isCounties && isTestingData) {
-      $('#viz').hide();
-      $('.testing-data-unavailable').show();
-      return;
-    } else {
-      $('#viz').show();
-      $('.testing-data-unavailable').hide();
-    }
-
-    const overviewData = filterOverviewData(overview, datesToShow, true);
-    const gridData = filterGridData(groups, datesToShow, !isCounties);
+    const overviewData = filterOverviewData(overview, datesToShow);
+    const gridData = filterGridData(groups, datesToShow);
 
     const options = {
       field,
@@ -608,8 +575,7 @@ import 'd3-transition';
   function aggMapData(groups, features) {
     const byFips = {};
 
-    const hasTests = groups[0].values[0].tests != undefined;
-    const fields = getValueKeys(hasTests);
+    const fields = getValueKeys();
 
     groups.forEach((group) => {
       const {values} = group;
@@ -630,19 +596,6 @@ import 'd3-transition';
         newCases: d3mean(values, (v) => v.newCases),
         newDeaths: d3mean(values, (v) => v.newDeaths),
       };
-
-      if (hasTests) {
-        value.positive = d3sum(values, (v) => v.newPositive);
-        value.negative = d3sum(values, (v) => v.newNegative);
-        value.tests = value.positive + value.negative;
-        value.positivePct = value.positive / value.tests;
-        value.negativePct = value.negative / value.tests;
-        value.newPositive = d3mean(values, (v) => v.newPositive);
-        value.newNegative = d3mean(values, (v) => v.newNegative);
-        value.newTests = value.newPositive + value.newNegative;
-        value.newPositivePct = value.newPositive / value.newTests;
-        value.newNegativePct = value.newNegative / value.newTests;
-      }
 
       const p100kFactor = pop / 1e5;
       fields.forEach((field) => {
@@ -797,7 +750,7 @@ import 'd3-transition';
     function onMouseEnter(d) {
       const evt = d3event;
       if (d.label) {
-        showMapTooltip({value: d, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
+        showMapTooltip({value: d, field, evt, allowDrilldown: allowDrilldown});
       }
     }
 
@@ -875,11 +828,6 @@ import 'd3-transition';
 
   function renderLegend() {
     const field = filters.field;
-    if (field.toLowerCase().indexOf('tests') >= 0) {
-        $('.testing-legend').show();
-    } else {
-        $('.testing-legend').hide();
-    }
     if (field === 'newCases' || field === 'newDeaths') {
       $('.ma-legend .legend-field-label').text(
         dataPointLabels[field] + (filters.per100k ? ' per 100K' : '')
@@ -988,7 +936,7 @@ import 'd3-transition';
         .enter()
         .append('g')
         .attr('class', 'cell')
-        .classed('cell-clickable', allowDrilldown && !isTestingData)
+        .classed('cell-clickable', allowDrilldown)
         .attr('transform', (d) => `translate(${d.col * colWidth}, 0)`);
     });
 
@@ -1113,16 +1061,7 @@ import 'd3-transition';
 
       $cell.append('g').attr('transform', 'translate(0,0)').call(cellYAxis);
 
-      let stackFields;
-      if (isTestingData) {
-        stackFields =
-          filters.field === 'newTests' ? ['newPositive', 'newNegative'] : ['positive', 'negative'];
-        if (filters.per100k) {
-          stackFields = stackFields.map(per100kKey);
-        }
-      } else {
-        stackFields = [field];
-      }
+      let stackFields = [field];
 
       function renderLine(yProperty, classes) {
         const xOffset = barWidth / 2;
@@ -1214,7 +1153,7 @@ import 'd3-transition';
         if (value && (value !== tooltipValue || !tooltipShown)) {
           const chPos = Math.round(xScale(index) + barWidth / 2);
           $crosshair.attr('x1', chPos).attr('x2', chPos).classed('crosshair-hidden', false);
-          showChartTooltip({value, field, evt, allowDrilldown: allowDrilldown && !isTestingData});
+          showChartTooltip({value, field, evt, allowDrilldown: allowDrilldown});
         }
       }
 
@@ -1348,25 +1287,8 @@ import 'd3-transition';
       css.top = `${pageY + pad}px`;
     }
 
-    const hasPercents = isTestingData;
-    const columnClass = hasPercents ? 'col-3' : 'col-2';
-
     let dataPoints;
-    if (filters.field === 'tests') {
-      dataPoints = [
-        {key: 'positive', color: 'primary1', pct: value.positivePct},
-        {key: 'negative', color: 'primary2', pct: value.negativePct},
-        {key: 'cases'},
-        {key: 'deaths'},
-      ];
-    } else if (filters.field === 'newTests') {
-      dataPoints = [
-        {key: 'newPositive', color: 'primary1', pct: value.newPositivePct},
-        {key: 'newNegative', color: 'primary2', pct: value.newNegativePct},
-        {key: 'newCases'},
-        {key: 'newDeaths'},
-      ];
-    } else if (filters.field.indexOf('new') === 0) {
+    if (filters.field.indexOf('new') === 0) {
       dataPoints = ['newCases', 'newDeaths'].map((k) => ({
         key: k,
         color: k === field ? 'primary1' : null,
@@ -1422,7 +1344,7 @@ import 'd3-transition';
       .html(
         `<div><h4>${title}</h4>
         ${subtitle ? `<h5>${subtitle}</h5>` : ''}
-              <div class="tooltip-grid ${columnClass}">
+              <div class="tooltip-grid col-2">
                 ${dataPointEl.join('')}
               </div>
               ${drilldownMsg}</div>`,

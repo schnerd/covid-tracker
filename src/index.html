@@ -60,10 +60,7 @@
               Cases/Deaths data from
               <a href="https://github.com/nytimes/covid-19-data" target="_blank"
                 >The New York Times</a
-              >. Testing data from
-              <a href="https://covidtracking.com/about-tracker/" target="_blank"
-                >The COVID Tracking Project</a
-              >. Automatically updates with source data.
+              >. Updates daily with source data.
             </h3>
             <h4>
               Built by <a href="https://twitter.com/dschnr" target="_blank">@dschnr</a>. Source code
@@ -81,10 +78,8 @@
             <select id="field-select" class="select-css">
               <option value="newCases" selected>Daily New Cases</option>
               <option value="newDeaths">Daily New Deaths</option>
-              <option class="field-select-test-option" value="newTests">Daily New Tests</option>
               <option value="cases">Total Announced Cases</option>
               <option value="deaths">Total Announced Deaths</option>
-              <option class="field-select-test-option" value="tests">Total Testing</option>
             </select>
           </div>
           <div class="filter-item">
@@ -130,16 +125,6 @@
           <div>7-day Moving Average</div>
         </div>
       </div>
-      <div class="legend testing-legend">
-        <div class="legend-item">
-          <div class="legend-square bg-primary1"></div>
-          <div>Positive Tests</div>
-        </div>
-        <div class="legend-item">
-          <div class="legend-square bg-primary2"></div>
-          <div>Negative Tests</div>
-        </div>
-      </div>
 
       <div id="viz">
         <div id="viz-top">
@@ -167,9 +152,6 @@
         <svg id="grid"></svg>
       </div>
       <div id="tooltip"></div>
-      <div class="testing-data-unavailable">
-        Consistent county-level testing data is not yet available
-      </div>
     </div>
     <script src="https://d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
     <script>
