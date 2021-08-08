@@ -1317,15 +1317,6 @@ import 'd3-transition';
       return `
         	<div class="tooltip-dp-label ${dp.color || ''}">${fieldLabels[dp.key]}</div>
         	<div class="tooltip-dp-val">${format(dpValue)}${dp.suffix || ''}</div>
-          ${
-            hasPercents
-              ? `
-            <div class="tooltip-dp-pct">
-              ${formatTooltipPct(dp.pct)}
-            </div>
-          `
-              : ''
-          }
         	`;
     });
 
@@ -1399,11 +1390,6 @@ import 'd3-transition';
 
   function formatMapLegendTick(n) {
     return formatNumNice(n, 2);
-  }
-
-  const pctFmt = d3format('.1%');
-  function formatTooltipPct(n) {
-    return n != undefined ? `(${pctFmt(n)})` : '';
   }
 
   function setStateFilter(state) {
