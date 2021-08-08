@@ -49,14 +49,23 @@ import 'd3-transition';
   let countyFeatures = null;
 
   // Filter values
-  const filters = {
+  const filterKeys = {
+    state: 'state',
+    field: 'field',
+    time: 'time',
+    useLog: 'log',
+    per100k: 'per100k',
+    consistentY: 'consistentY',
+  };
+  const filterDefaults = {
     state: 'all',
     field: 'newCases',
-    time: '14d',
+    time: '1mo',
     useLog: false,
-    per100k: false,
+    per100k: true,
     consistentY: true,
   };
+  const filters = {...filterDefaults};
 
   // UI state
   let firstCasesDate = new Date(2020, 0, 21);
@@ -153,23 +162,6 @@ import 'd3-transition';
   ////////////
   // Router //
   ////////////
-
-  const filterKeys = {
-    state: 'state',
-    field: 'field',
-    time: 'time',
-    useLog: 'log',
-    per100k: 'per100k',
-    consistentY: 'consistentY',
-  };
-  const filterDefaults = {
-    state: 'all',
-    field: 'newCases',
-    time: '14d',
-    useLog: false,
-    per100k: true,
-    consistentY: true,
-  };
 
   class Router {
     constructor(hist) {
