@@ -81,12 +81,8 @@ import 'd3-transition';
   const dataPointLabels = {
     cases: 'Total Cases',
     deaths: 'Total Deaths',
-    positive: 'Total Positive',
-    negative: 'Total Negative',
     newCases: 'New Cases',
     newDeaths: 'New Deaths',
-    newPositive: 'New Positive',
-    newNegative: 'New Negative',
     pop: 'Est. Population',
   };
   Object.keys(dataPointLabels).forEach((k) => {
