@@ -153,10 +153,6 @@
       </div>
       <div id="tooltip"></div>
     </div>
-    <script src="https://d2wy8f7a9ursnm.cloudfront.net/v6/bugsnag.min.js"></script>
-    <script>
-      window.bugsnagClient = bugsnag('b84fcf0d4140c6fbfaa590be4099f814');
-    </script>
     <% _.forEach(htmlWebpackPlugin.files.js, function(file) { %>
     <script src="<%- file %>"></script>
     <% }); %>
