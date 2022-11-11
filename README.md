@@ -9,8 +9,6 @@ https://www.us-covid-tracker.com/
 New York Times cases/deaths data: https://github.com/nytimes/covid-19-data
 Our "Daily New Cases" and "Daily New Deaths" values are calculated by taking the difference between the "cases"/"deaths" value of that day and the day before.
 
-Testing data from The COVID Tracking project: https://covidtracking.com/about-data
-
 ## Development
 
 ```
